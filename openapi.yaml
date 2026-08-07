@@ -1,0 +1,1686 @@
+openapi: 3.0.3
+info:
+  title: Team Directory API
+  description: |
+    Admin-managed user/profile/employment/team directory API.
+
+    There is no public sign-up — every account is created by an admin via
+    `POST /users`. Authentication is JWT-based with short-lived access
+    tokens and long-lived refresh tokens. Authorization is role-based via
+    Pundit, where a user's role (`admin` / `team_lead` / `member`) lives on
+    their `EmploymentDetail` record, not on the `User` record itself.
+
+    ### Authentication
+    - The **access token** is sent as `Authorization: Bearer <token>` on
+      every request to a protected endpoint. It is short-lived (15 minutes).
+    - The **refresh token** is sent in the JSON body of `POST /auth/refresh`
+      (`{"refresh_token": "..."}`) — it is never sent as a header. It is
+      long-lived (7 days) and is only used to mint a new access token.
+    - Tokens are HS256 JWTs carrying `{user_id, type, exp}`, where `type` is
+      `"access"` or `"refresh"`. A token of the wrong `type` is rejected by
+      the endpoint that doesn't expect it (e.g. an access token submitted to
+      `/auth/refresh`, or a refresh token used as a Bearer token).
+    - Missing, malformed, expired, or wrong-type tokens all resolve to the
+      same outcome for protected endpoints: `401 Unauthorized` with
+      `{"error": "Please log in"}`. `/auth/refresh` reports its own token
+      problems as `401 Unauthorized` with `{"error": "Invalid refresh token"}`.
+    - `POST /auth/login`, `POST /auth/refresh`, `POST /password/forgot`, and
+      `PATCH /password/reset` do **not** require a token.
+
+    ### Authorization
+    - "Admin" means the requesting user's `employment_detail.role` is
+      `admin`. A user's role is never taken from the request — it's looked
+      up from their own `EmploymentDetail` row server-side.
+    - Every `create`/`update`/`destroy` on Users, Profiles, Employment
+      Details, and Teams is **admin-only**.
+    - A non-admin user may only `GET` their own User, Profile, and
+      Employment Detail records (`show` actions), plus `GET /me`.
+    - `GET /teams` and `GET /teams/:id` are open to **any authenticated
+      user** (not just admins) — a user needs to be able to see their own
+      team.
+    - Authorization failures return `403 Forbidden` with
+      `{"error": "You are not authorized to perform this action"}`.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://api.example.com
+    description: "Placeholder — replace with the real deployed API host"
+tags:
+  - name: Authentication
+    description: Login and access-token refresh
+  - name: Password Reset
+    description: Self-service password reset via emailed token (no login required)
+  - name: Users
+    description: User accounts (admin-managed; no public sign-up)
+  - name: Profiles
+    description: Per-user profile details (one profile per user)
+  - name: Employment Details
+    description: Per-user role, job position, and team assignment (one per user)
+  - name: Teams
+    description: Teams that employment details can reference
+  - name: Projects
+    description: Team-owned projects (admin-managed; read access is team-scoped)
+  - name: Issues
+    description: Issues raised by team members against their team's projects (admin is read-only here)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Log in with username or email + password
+      description: |
+        Accepts either a username or an email address in the `username`
+        field (the controller tries both `User.find_by(username:)` and
+        `User.find_by(email:)`). No authentication required.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: alice
+              password: password123
+      responses:
+        '200':
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                user:
+                  id: 1
+                  username: alice
+                  email: alice@example.com
+                  created_at: "2026-08-06T14:38:50.247Z"
+                  updated_at: "2026-08-06T14:38:50.247Z"
+                  profile: null
+                  employment_detail: null
+                access_token: eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0NTk0NzMwfQ.xxx
+                refresh_token: eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJ0eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1NTE5ODczMH0.xxx
+        '401':
+          description: Unknown username/email or wrong password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid username/email or password
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Exchange a refresh token for a new access token
+      description: |
+        Requires JWT type `refresh` — an access token submitted here is
+        rejected. No `Authorization` header is used; the refresh token is
+        passed in the body.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: A new access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+              example:
+                access_token: eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0NTk0NzMwfQ.xxx
+        '401':
+          description: Refresh token missing, malformed, expired, or not of type `refresh`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid refresh token
+
+  /me:
+    get:
+      tags: [Users]
+      summary: Get the current authenticated user
+      description: Returns the caller's own User record (with nested profile/employment_detail). Any authenticated user.
+      responses:
+        '200':
+          description: The current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /password/forgot:
+    post:
+      tags: [Password Reset]
+      summary: Request a password reset email
+      description: |
+        Always returns the same 200 response whether or not the email is
+        registered, so this endpoint cannot be used to enumerate accounts.
+        If the email matches a user, a reset token is generated (SHA-256
+        digest stored on the user, raw token emailed) and an email is
+        queued via `PasswordMailer#reset_instructions` (`deliver_later`).
+        The reset token is valid for 2 hours from issuance.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Always returned, regardless of whether the email exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: If that email is registered, password reset instructions have been sent.
+
+  /password/reset:
+    patch:
+      tags: [Password Reset]
+      summary: Reset a password using the emailed token
+      description: |
+        `token` is the raw token emailed to the user (matched server-side
+        against its stored SHA-256 digest). Rejected if the token doesn't
+        match any user or if it was issued more than 2 hours ago. On
+        success, the token is cleared (single-use).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Password has been reset. You can now log in.
+        '422':
+          description: Token invalid/expired, or the new password failed validation
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+                  - $ref: '#/components/schemas/ValidationErrorResponse'
+              examples:
+                invalidToken:
+                  value: { error: "That reset link is invalid or has expired." }
+                validationFailed:
+                  value: { errors: ["Password confirmation doesn't match Password"] }
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List all users
+      description: Admin only. Returns every user (no pagination).
+      responses:
+        '200':
+          description: Array of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Users]
+      summary: Create a user
+      description: Admin only. This is the only way accounts get created — there is no public sign-up.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+            example:
+              username: bob
+              email: bob@example.com
+              password: password123
+              password_confirmation: password123
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Users]
+      summary: Get a user
+      description: Admin, or the user viewing their own record.
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Users]
+      summary: Update a user
+      description: |
+        Admin only. Accepts the same fields as create, including
+        `password`/`password_confirmation` — an admin can set a user's
+        password directly through this endpoint (this is separate from,
+        and in addition to, the self-service forgot-password flow).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    put:
+      tags: [Users]
+      summary: Update a user (full replace, same behavior as PATCH)
+      description: Admin only. Rails routes PUT and PATCH to the same action; strong params are unchanged, so behavior is identical to PATCH.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Users]
+      summary: Delete a user
+      description: "Admin only. Cascades to the user's Profile and Employment Detail (`dependent: :destroy`)."
+      responses:
+        '204':
+          description: Deleted, no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{user_id}/profile:
+    parameters:
+      - $ref: '#/components/parameters/UserIdPathParam'
+    get:
+      tags: [Profiles]
+      summary: Get a user's profile
+      description: Admin, or the user viewing their own profile. 404 if the user has no profile yet.
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Profiles]
+      summary: Create a profile for a user
+      description: Admin only. Fails with 422 if the user already has a profile (one profile per user, enforced by a uniqueness validation and a unique DB index on `user_id`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileRequest'
+            example:
+              full_name: Bob Smith
+              phone: "+1-555-0100"
+              address: "123 Main St"
+              city: Springfield
+              country: USA
+              image_url: "https://example.com/avatar.png"
+      responses:
+        '201':
+          description: Profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    patch:
+      tags: [Profiles]
+      summary: Update a user's profile
+      description: Admin only. 404 if the user has no profile yet (use POST to create one first).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileRequest'
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    put:
+      tags: [Profiles]
+      summary: Update a user's profile (same behavior as PATCH)
+      description: Admin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileRequest'
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Profiles]
+      summary: Delete a user's profile
+      description: Admin only. 404 if the user has no profile.
+      responses:
+        '204':
+          description: Deleted, no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{user_id}/employment_detail:
+    parameters:
+      - $ref: '#/components/parameters/UserIdPathParam'
+    get:
+      tags: [Employment Details]
+      summary: Get a user's employment detail
+      description: Admin, or the user viewing their own record. 404 if not set yet.
+      responses:
+        '200':
+          description: The employment detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploymentDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Employment Details]
+      summary: Create an employment detail for a user
+      description: |
+        Admin only. One per user (uniqueness validation + unique DB index on
+        `user_id`). `team_id` is optional — a brand-new employee may not be
+        assigned to a team yet. If `role` is `admin`, `team_id` must be
+        blank (validated server-side; a team-bearing admin record is
+        rejected with 422).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmploymentDetailRequest'
+            example:
+              team_id: 2
+              role: member
+              job_position: Software Engineer
+              joined_at: "2026-08-07T09:00:00Z"
+      responses:
+        '201':
+          description: Employment detail created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploymentDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    patch:
+      tags: [Employment Details]
+      summary: Update a user's employment detail
+      description: Admin only. 404 if not set yet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmploymentDetailRequest'
+      responses:
+        '200':
+          description: Updated employment detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploymentDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    put:
+      tags: [Employment Details]
+      summary: Update a user's employment detail (same behavior as PATCH)
+      description: Admin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmploymentDetailRequest'
+      responses:
+        '200':
+          description: Updated employment detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploymentDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Employment Details]
+      summary: Delete a user's employment detail
+      description: Admin only. 404 if not set.
+      responses:
+        '204':
+          description: Deleted, no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /teams:
+    get:
+      tags: [Teams]
+      summary: List all teams
+      description: Any authenticated user (not admin-restricted — a user needs to see their own team). No pagination.
+      responses:
+        '200':
+          description: Array of teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Teams]
+      summary: Create a team
+      description: Admin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+            example:
+              name: Engineering
+              description: Product engineering team
+              team_lead_id: 3
+      responses:
+        '201':
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /teams/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Team ID
+        schema:
+          type: integer
+    get:
+      tags: [Teams]
+      summary: Get a team
+      description: Any authenticated user.
+      responses:
+        '200':
+          description: The team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Teams]
+      summary: Update a team
+      description: Admin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+      responses:
+        '200':
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    put:
+      tags: [Teams]
+      summary: Update a team (same behavior as PATCH)
+      description: Admin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+      responses:
+        '200':
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Teams]
+      summary: Delete a team
+      description: |
+        Admin only. Restricted by `dependent: :restrict_with_error` on
+        `Team#employment_details` — deleting a team that still has
+        employment details attached fails with 422 rather than orphaning or
+        cascading. (The controller calls `destroy!`, so this restriction
+        surfaces through the same `record_invalid` handler as other
+        validation failures.)
+      responses:
+        '204':
+          description: Deleted, no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /projects:
+    get:
+      tags: [Projects]
+      summary: List projects
+      description: |
+        Admin sees every project, including unassigned ones
+        (`team_id: null`). A team member sees only their own team's
+        projects — unassigned projects and other teams' projects are not
+        included. A user with no team sees an empty list. No pagination.
+      responses:
+        '200':
+          description: Array of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Projects]
+      summary: Create a project
+      description: |
+        Admin only. `created_by_id` is always the current admin — never
+        accepted as input. `team_id` cannot be set here; use
+        `POST /projects/{id}/assign_team` after creation. `status`
+        defaults to `planning` and is not accepted on create. `start_date`
+        is system-controlled (see `PATCH /projects/{id}`) and not accepted
+        here either.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreateRequest'
+            example:
+              title: Website Redesign
+              description: Refresh the marketing site
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /projects/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Project ID
+        schema:
+          type: integer
+    get:
+      tags: [Projects]
+      summary: Get a project
+      description: Admin, or a member of the project's own team. 403 for an unrelated team's member, and for anyone non-admin on an unassigned project.
+      responses:
+        '200':
+          description: The project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Projects]
+      summary: Update a project
+      description: |
+        Admin only. Accepts `title`, `description`, `status`, `end_date`.
+        `team_id` is intentionally not accepted here — use the dedicated
+        assign/unassign endpoints, which also carry the archive side
+        effect described there.
+
+        Status rules: `active`, `onhold`, and `completed` all require the
+        project to already have a team (`422` otherwise). `planning` and
+        `archived` do not require a team. Setting `status` to `active` for
+        the first time automatically stamps `start_date` with today's
+        date (once only — later transitions don't move it).
+        `end_date`, if set, must be strictly after `start_date`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdateRequest'
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    put:
+      tags: [Projects]
+      summary: Update a project (same behavior as PATCH)
+      description: Admin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdateRequest'
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Projects]
+      summary: Delete a project
+      description: Admin only.
+      responses:
+        '204':
+          description: Deleted, no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/assign_team:
+    post:
+      tags: [Projects]
+      summary: Assign (or reassign) a project's team
+      description: |
+        Admin only. Sets `team_id` to the given team, whether the project
+        was previously unassigned or belonged to a different team. Does
+        **not** change `status` — in particular, reassigning a team to an
+        `archived` project leaves it `archived`; nothing auto-reactivates
+        it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                team_id:
+                  type: integer
+              required: [team_id]
+      responses:
+        '200':
+          description: Project with the team assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /projects/{id}/unassign_team:
+    delete:
+      tags: [Projects]
+      summary: Unassign a project's team
+      description: |
+        Admin only. Sets `team_id` to `null` and, as a direct consequence,
+        automatically forces `status` to `archived` — this is the one case
+        where `archived` is reachable with no team present.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Project with the team unassigned (now archived)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project_id}/issues:
+    parameters:
+      - name: project_id
+        in: path
+        required: true
+        description: Project ID
+        schema:
+          type: integer
+    get:
+      tags: [Issues]
+      summary: List a project's issues
+      description: |
+        Admin, or a member of the project's team. A member of any other
+        team gets `403`. No pagination.
+      responses:
+        '200':
+          description: Array of issues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Issues]
+      summary: Raise an issue against a project
+      description: |
+        Members of the project's team only — including that team's lead.
+        **Admins cannot raise issues** (`403`); admin is read-only on this
+        resource at every status.
+
+        `raised_by_id` is always the authenticated user and is never
+        accepted as input. `status` always starts as `open` and cannot be
+        set here. `resolution_note` cannot be set on an open issue at all.
+
+        The project must currently be `active` and belong to the raiser's
+        team, otherwise `422`. (This is checked only at creation — an issue
+        stays workable if its project later moves to `onhold`/`archived`.)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCreateRequest'
+            example:
+              title: Login button is misaligned
+              description: Only on Safari, below 900px wide
+      responses:
+        '201':
+          description: Issue created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /issues/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Issue ID
+        schema:
+          type: integer
+    get:
+      tags: [Issues]
+      summary: Get an issue
+      description: Admin, or a member of the issue's project's team. Readable at any status, including after it has been resolved or rejected.
+      responses:
+        '200':
+          description: The issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Issues]
+      summary: Edit an issue
+      description: |
+        Only the member who raised the issue, and only while it is still
+        `open`. Team leads and admins cannot edit issues at all (`403`).
+
+        Accepts `title` and `description` only — `status` and
+        `resolution_note` are never mass-assignable and are silently
+        ignored if supplied. Use the resolve/reject endpoints for those.
+
+        Returns `403` once the issue is `resolved` or `rejected`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdateRequest'
+      responses:
+        '200':
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    put:
+      tags: [Issues]
+      summary: Edit an issue (same behavior as PATCH)
+      description: Only the member who raised the issue, while it is still open.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdateRequest'
+      responses:
+        '200':
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Issues]
+      summary: Delete an issue
+      description: |
+        Only the member who raised it, and only while it is still `open`.
+        Leads and admins cannot delete issues. Returns `403` once the issue
+        is `resolved` or `rejected` — closed issues are permanent.
+      responses:
+        '204':
+          description: Deleted, no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /issues/{id}/resolve:
+    post:
+      tags: [Issues]
+      summary: Resolve an issue
+      description: |
+        Only the designated lead of the issue's project's team — that is,
+        the user named by `teams.team_lead_id`. A user whose
+        `employment_detail.role` is `team_lead` but who is *not* their
+        team's `team_lead_id` gets `403`, as do the issue's owner, other
+        teammates, and admins.
+
+        `resolution_note` is **required** — omitting it returns `422` and
+        the issue stays `open`.
+
+        Only works on an `open` issue; a `resolved`/`rejected` issue is
+        terminal and returns `403`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Issue ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCloseRequest'
+            example:
+              resolution_note: Fixed in release 2.1
+      responses:
+        '200':
+          description: Issue resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /issues/{id}/reject:
+    post:
+      tags: [Issues]
+      summary: Reject an issue
+      description: |
+        Identical authorization and rules to `/issues/{id}/resolve`, but
+        sets `status` to `rejected`. `resolution_note` is required, and the
+        issue is locked permanently afterwards.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Issue ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCloseRequest'
+            example:
+              resolution_note: Working as designed
+      responses:
+        '200':
+          description: Issue rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token from `POST /auth/login` or `POST /auth/refresh`, sent
+        as `Authorization: Bearer <token>`. Must be a token of JWT `type:
+        "access"` — a refresh token here is treated the same as no token at
+        all (401).
+
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: User ID
+      schema:
+        type: integer
+    UserIdPathParam:
+      name: user_id
+      in: path
+      required: true
+      description: User ID (parent resource)
+      schema:
+        type: integer
+
+  responses:
+    Unauthorized:
+      description: Missing/invalid/expired access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Please log in
+    Forbidden:
+      description: Authenticated, but not permitted to perform this action
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: You are not authorized to perform this action
+    NotFound:
+      description: Record not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Record not found
+    UnprocessableEntity:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+          example:
+            errors: ["Email has already been taken", "Username can't be blank"]
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: string
+      required: [errors]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    LoginRequest:
+      type: object
+      description: "`username` accepts either the actual username or the email address — the server tries both."
+      properties:
+        username:
+          type: string
+          example: alice
+        password:
+          type: string
+          format: password
+          example: password123
+      required: [username, password]
+
+    LoginResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        access_token:
+          type: string
+          description: JWT, type "access", expires in 15 minutes
+        refresh_token:
+          type: string
+          description: JWT, type "refresh", expires in 7 days
+      required: [user, access_token, refresh_token]
+
+    RefreshRequest:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+      required: [refresh_token]
+
+    RefreshResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT, type "access", expires in 15 minutes
+      required: [access_token]
+
+    ForgotPasswordRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required: [email]
+
+    ResetPasswordRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Raw token from the emailed reset link (not the hashed value stored server-side)
+        password:
+          type: string
+          format: password
+        password_confirmation:
+          type: string
+          format: password
+      required: [token, password, password_confirmation]
+
+    User:
+      type: object
+      description: Embeds `profile` and `employment_detail` inline; both are `null` if not yet created for this user.
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        profile:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Profile'
+        employment_detail:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/EmploymentDetail'
+      required: [id, username, email, created_at, updated_at]
+
+    UserCreateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required, unique (case-insensitive)
+        email:
+          type: string
+          format: email
+          description: Required, unique (case-insensitive), must be a valid email format
+        password:
+          type: string
+          format: password
+          description: Required (via has_secure_password); no explicit minimum length enforced beyond bcrypt's own limits
+        password_confirmation:
+          type: string
+          format: password
+          description: Must match `password` if provided
+      required: [username, email, password]
+
+    UserUpdateRequest:
+      type: object
+      description: All fields optional on update; only supplied fields are changed. Same validation rules as create.
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        password_confirmation:
+          type: string
+          format: password
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        full_name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        image_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, user_id, full_name, created_at, updated_at]
+
+    ProfileRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          description: Required
+        phone:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        image_url:
+          type: string
+      required: [full_name]
+
+    EmploymentDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        team_id:
+          type: integer
+          nullable: true
+          description: Null for admins (enforced) and for employees not yet assigned to a team
+        role:
+          type: string
+          enum: [admin, team_lead, member]
+        job_position:
+          type: string
+        joined_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, user_id, role, job_position, joined_at, created_at, updated_at]
+
+    EmploymentDetailRequest:
+      type: object
+      properties:
+        team_id:
+          type: integer
+          nullable: true
+          description: Optional. Must be omitted/null if role is "admin".
+        role:
+          type: string
+          enum: [admin, team_lead, member]
+          description: Defaults to "member" (enum default 2) if omitted
+        job_position:
+          type: string
+          description: Required
+        joined_at:
+          type: string
+          format: date-time
+          description: Required
+      required: [job_position, joined_at]
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        team_lead_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, name, created_at, updated_at]
+
+    TeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Required, unique (case-insensitive)
+        description:
+          type: string
+        team_lead_id:
+          type: integer
+          nullable: true
+          description: Optional — a team may have no lead yet
+      required: [name]
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+        team_id:
+          type: integer
+          nullable: true
+          description: Null until assigned via POST /projects/{id}/assign_team
+        created_by_id:
+          type: integer
+          description: The admin who created the project. System-controlled, never editable.
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [planning, active, onhold, completed, archived]
+        start_date:
+          type: string
+          format: date
+          nullable: true
+          description: Auto-set the first time status becomes "active"; never set manually
+        end_date:
+          type: string
+          format: date
+          nullable: true
+          description: Admin-settable. Must be strictly after start_date if both are present.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, created_by_id, title, status, created_at, updated_at]
+
+    ProjectCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Required
+        description:
+          type: string
+      required: [title]
+
+    ProjectUpdateRequest:
+      type: object
+      description: All fields optional; only supplied fields are changed. team_id is not accepted (use assign_team/unassign_team).
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [planning, active, onhold, completed, archived]
+          description: active/onhold/completed require the project to already have a team; planning/archived do not
+        end_date:
+          type: string
+          format: date
+
+    Issue:
+      type: object
+      properties:
+        id:
+          type: integer
+        project_id:
+          type: integer
+        raised_by_id:
+          type: integer
+          description: The team member who raised the issue. System-controlled, never editable.
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [open, resolved, rejected]
+          description: Starts as "open". Only the project team's lead can move it to resolved/rejected, and that transition is permanent.
+        resolution_note:
+          type: string
+          nullable: true
+          description: Null while open. Set by the team lead when resolving or rejecting, and required at that point.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, project_id, raised_by_id, title, status, created_at, updated_at]
+
+    IssueCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Required
+        description:
+          type: string
+      required: [title]
+
+    IssueUpdateRequest:
+      type: object
+      description: All fields optional. status and resolution_note are not accepted here — use the resolve/reject endpoints.
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+
+    IssueCloseRequest:
+      type: object
+      properties:
+        resolution_note:
+          type: string
+          description: Required — the lead's justification for resolving or rejecting
+      required: [resolution_note]

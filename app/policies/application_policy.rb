@@ -1,0 +1,39 @@
+class ApplicationPolicy
+  attr_reader :user, :record
+
+  def initialize(user, record)
+    @user = user
+    @record = record
+  end
+
+  def index? = false
+  def show? = false
+  def create? = false
+  def new? = create?
+  def update? = false
+  def edit? = update?
+  def destroy? = false
+
+  # Every resource in this app is admin-managed by default; subclasses opt
+  # individual users into narrower access (e.g. viewing their own record).
+  def admin_or_owner?
+    user.admin? || owns_record?
+  end
+
+  def owns_record?
+    false
+  end
+
+  class Scope
+    attr_reader :user, :scope
+
+    def initialize(user, scope)
+      @user = user
+      @scope = scope
+    end
+
+    def resolve
+      raise NoMethodError, "You must define #resolve in #{self.class}"
+    end
+  end
+end
