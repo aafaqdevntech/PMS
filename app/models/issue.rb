@@ -2,9 +2,16 @@ class Issue < ApplicationRecord
   belongs_to :project
   belongs_to :raised_by, class_name: "User"
 
+  # Work derived from an issue outlives it.
+  has_many :tasks, dependent: :nullify
+
   enum :status, { open: 0, resolved: 1, rejected: 2 }
 
-  validates :title, presence: true
+  # Lengths mirror the check constraints on the table, so over-long input is
+  # a 422 here rather than a constraint violation at the database.
+  validates :title, presence: true, length: { maximum: 255 }
+  validates :description, length: { maximum: 5000 }
+  validates :resolution_note, length: { maximum: 5000 }
   validate :project_active, on: :create
   validate :raiser_belongs_to_project_team, on: :create
   validate :resolution_note_matches_status

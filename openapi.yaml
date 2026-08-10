@@ -63,6 +63,8 @@ tags:
     description: Team-owned projects (admin-managed; read access is team-scoped)
   - name: Issues
     description: Issues raised by team members against their team's projects (admin is read-only here)
+  - name: Tasks
+    description: Work items on a team's projects, managed by the team lead and worked by one assignee (admin is read-only here)
 
 security:
   - bearerAuth: []
@@ -1217,6 +1219,310 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /projects/{project_id}/tasks:
+    parameters:
+      - name: project_id
+        in: path
+        required: true
+        description: Project ID
+        schema:
+          type: integer
+    get:
+      tags: [Tasks]
+      summary: List a project's tasks
+      description: |
+        Admin, or any member of the project's team. A member of any other
+        team gets `403`. No pagination.
+      responses:
+        '200':
+          description: Array of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Tasks]
+      summary: Create a task on a project
+      description: |
+        The project team's **designated lead** only (`teams.team_lead_id`) —
+        a user whose `employment_detail.role` is `team_lead` without being
+        their team's designated lead gets `403`, as do members, other teams,
+        and admins.
+
+        `created_by_id` is always the authenticated lead and is never
+        accepted as input. A task always starts `unassigned` with no
+        assignee — `status` and `assigned_to_id` cannot be set here, use
+        `POST /tasks/{id}/assign`.
+
+        The project must currently be `active`, otherwise `422`. (Checked
+        only at creation — a task stays workable if its project later moves
+        to `onhold`/`archived`.) `issue_id` is optional and must reference an
+        issue on the same project.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreateRequest'
+            example:
+              title: Fix Safari layout on the login screen
+              description: Reproduce below 900px, then correct the flex basis
+              priority: high
+              due_date: '2026-09-01'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Task ID
+        schema:
+          type: integer
+    get:
+      tags: [Tasks]
+      summary: Get a task
+      description: Admin, or any member of the task's project's team. Readable at any status.
+      responses:
+        '200':
+          description: The task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Tasks]
+      summary: Update a task's details
+      description: |
+        The project team's designated lead only, at any status — including
+        after the task is `completed`.
+
+        `status` and `assigned_to_id` are **not** accepted here (they are
+        silently ignored): use `/assign`, `/unassign`, and `/status`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdateRequest'
+            example:
+              title: Fix Safari layout on the login screen
+              priority: critical
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    put:
+      tags: [Tasks]
+      summary: Update a task's details (alias of PATCH)
+      description: Identical to `PATCH /tasks/{id}`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdateRequest'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Tasks]
+      summary: Delete a task
+      description: The project team's designated lead only, at any status.
+      responses:
+        '204':
+          description: Task deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/{id}/assign:
+    post:
+      tags: [Tasks]
+      summary: Assign or reassign a task
+      description: |
+        The project team's designated lead only. Sets `assigned_to_id` and
+        moves the task to `assigned` (work starts now) or `on_hold` (parked).
+        Any other `status` value returns `422`.
+
+        The assignee must be a member of the project's team, otherwise `422`.
+        Works from any status, so this is also how a task is reassigned to a
+        different member.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskAssignRequest'
+            example:
+              assigned_to_id: 42
+              status: assigned
+      responses:
+        '200':
+          description: Task assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /tasks/{id}/unassign:
+    delete:
+      tags: [Tasks]
+      summary: Unassign a task
+      description: |
+        The project team's designated lead only. Clears `assigned_to_id` and
+        resets `status` to `unassigned`, from any status. Returns the task
+        rather than `204`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task unassigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /tasks/{id}/status:
+    patch:
+      tags: [Tasks]
+      summary: Move a task through the workflow
+      description: |
+        The project team's designated lead **or** the task's current
+        assignee — anyone else (including admins and other teammates) gets
+        `403`. Each of the two drives a different half of the workflow, and a
+        lead who assigned the task to themself gets both sets:
+
+        | From | Assignee may set | Lead may set |
+        |---|---|---|
+        | `assigned` | `working` | `on_hold` |
+        | `working` | `ready_for_review` | `on_hold` |
+        | `ready_for_review` | — | `returned`, `completed`, `on_hold` |
+        | `returned` | `working`, `ready_for_review` | `on_hold` |
+        | `on_hold` | — | `assigned` |
+        | `completed` | — | `returned`, `on_hold` |
+
+        `unassigned` is only entered and left through `/assign` and
+        `/unassign`. A move that isn't in the caller's row — including
+        setting the status the task already has — returns `422`, as does an
+        unknown status value.
+
+        Note that `completed` is reachable only from `ready_for_review`, so
+        completion always passes through review; `completed` is not terminal
+        and the lead can reopen it to `returned`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskStatusRequest'
+            example:
+              status: ready_for_review
+      responses:
+        '200':
+          description: Status changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1684,3 +1990,114 @@ components:
           type: string
           description: Required — the lead's justification for resolving or rejecting
       required: [resolution_note]
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        project_id:
+          type: integer
+        issue_id:
+          type: integer
+          nullable: true
+          description: The issue this task was promoted from, if any. Must belong to the same project.
+        created_by_id:
+          type: integer
+          description: The project team's lead who created the task. System-controlled, never editable.
+        assigned_to_id:
+          type: integer
+          nullable: true
+          description: The team member currently working the task. Set only through /assign and /unassign.
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 5000
+        priority:
+          type: string
+          enum: [critical, high, medium, normal]
+          description: Defaults to "normal".
+        status:
+          type: string
+          enum: [unassigned, assigned, working, on_hold, ready_for_review, returned, completed]
+          description: >-
+            Starts as "unassigned". Always travels with assigned_to_id — any status other than
+            "unassigned" requires an assignee, and clearing the assignee returns it to "unassigned".
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, project_id, created_by_id, title, description, priority, status, created_at, updated_at]
+
+    TaskCreateRequest:
+      type: object
+      description: status, assigned_to_id and created_by_id are not accepted — a task always starts unassigned.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          description: Required
+        description:
+          type: string
+          maxLength: 5000
+          description: Required
+        priority:
+          type: string
+          enum: [critical, high, medium, normal]
+        due_date:
+          type: string
+          format: date
+        issue_id:
+          type: integer
+          description: Optional — must be an issue on the same project
+      required: [title, description]
+
+    TaskUpdateRequest:
+      type: object
+      description: All fields optional. status and assigned_to_id are not accepted here — use /assign, /unassign, /status.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 5000
+        priority:
+          type: string
+          enum: [critical, high, medium, normal]
+        due_date:
+          type: string
+          format: date
+        issue_id:
+          type: integer
+
+    TaskAssignRequest:
+      type: object
+      properties:
+        assigned_to_id:
+          type: integer
+          description: Required — a member of the project's team
+        status:
+          type: string
+          enum: [assigned, on_hold]
+          description: Defaults to "assigned". Any other value is rejected with 422.
+      required: [assigned_to_id]
+
+    TaskStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [assigned, working, on_hold, ready_for_review, returned, completed]
+          description: >-
+            Required — must be a legal move for the caller from the task's current status
+            (see the transition table on PATCH /tasks/{id}/status).
+      required: [status]

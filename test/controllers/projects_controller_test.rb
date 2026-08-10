@@ -120,6 +120,15 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
+  test "title and description length limits are enforced as 422, not a database error" do
+    post "/projects", params: { title: "a" * 256 }, headers: auth_headers(@admin_token)
+    assert_response :unprocessable_entity
+
+    post "/projects", params: { title: "Too wordy", description: "b" * 5001 },
+                       headers: auth_headers(@admin_token)
+    assert_response :unprocessable_entity
+  end
+
   test "admin can delete a project" do
     delete "/projects/#{@project_a.id}", headers: auth_headers(@admin_token)
     assert_response :no_content

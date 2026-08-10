@@ -3,10 +3,14 @@ class Project < ApplicationRecord
   belongs_to :created_by, class_name: "User"
 
   has_many :issues, dependent: :destroy
+  has_many :tasks, dependent: :destroy
 
   enum :status, { planning: 0, active: 1, onhold: 2, completed: 3, archived: 4 }
 
-  validates :title, presence: true
+  # Lengths mirror the check constraints on the table, so over-long input is
+  # a 422 here rather than a constraint violation at the database.
+  validates :title, presence: true, length: { maximum: 255 }
+  validates :description, length: { maximum: 5000 }
   validate :end_date_after_start_date
   validate :status_requires_team, unless: -> { planning? || archived? }
 

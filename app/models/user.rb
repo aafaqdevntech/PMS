@@ -5,6 +5,14 @@ class User < ApplicationRecord
   has_one :employment_detail, dependent: :destroy
   has_one :led_team, class_name: "Team", foreign_key: :team_lead_id, inverse_of: :team_lead, dependent: :nullify
 
+  # Deleting an assignee leaves their tasks in place for the lead to hand on;
+  # created_by can't be nullified (it's required), so a lead who still owns
+  # tasks can't be deleted until those tasks are.
+  has_many :assigned_tasks, class_name: "Task", foreign_key: :assigned_to_id,
+                            inverse_of: :assigned_to, dependent: :nullify
+  has_many :created_tasks, class_name: "Task", foreign_key: :created_by_id,
+                           inverse_of: :created_by, dependent: :restrict_with_error
+
   validates :username, presence: true, uniqueness: { case_sensitive: false }
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                      format: { with: URI::MailTo::EMAIL_REGEXP }

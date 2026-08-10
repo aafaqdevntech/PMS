@@ -73,6 +73,21 @@ class IssuesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "title and description length limits are enforced as 422, not a database error" do
+    post "/projects/#{@project.id}/issues", params: { title: "a" * 256 }, headers: auth_headers(@owner_token)
+    assert_response :unprocessable_entity
+
+    post "/projects/#{@project.id}/issues",
+      params: { title: "Too wordy", description: "b" * 5001 }, headers: auth_headers(@owner_token)
+    assert_response :unprocessable_entity
+  end
+
+  test "a resolution note longer than the limit is rejected" do
+    post "/issues/#{@issue.id}/resolve", params: { resolution_note: "c" * 5001 }, headers: auth_headers(@lead_token)
+    assert_response :unprocessable_entity
+    assert_equal "open", @issue.reload.status
+  end
+
   # --- reading ---
 
   test "teammates and admin can read issues; other teams cannot" do

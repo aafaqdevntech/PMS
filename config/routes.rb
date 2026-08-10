@@ -25,12 +25,21 @@ Rails.application.routes.draw do
     end
 
     resources :issues, only: [:index, :create]
+    resources :tasks, only: [:index, :create]
   end
 
   resources :issues, only: [:show, :update, :destroy] do
     member do
       post :resolve
       post :reject
+    end
+  end
+
+  resources :tasks, only: [:show, :update, :destroy] do
+    member do
+      post :assign
+      delete :unassign
+      patch "status", to: "tasks#change_status"
     end
   end
 
