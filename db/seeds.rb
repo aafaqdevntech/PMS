@@ -10,6 +10,10 @@ admin = User.find_or_create_by!(username: "admin") do |u|
   u.password_confirmation = "ChangeMe123!"
 end
 
+Profile.find_or_create_by!(user: admin) do |p|
+  p.full_name = "Admin"
+end
+
 # Admins aren't part of any team.
 EmploymentDetail.find_or_create_by!(user: admin) do |e|
   e.role = :admin
