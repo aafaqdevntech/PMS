@@ -5,6 +5,7 @@ Rails.application.routes.draw do
 
   post "/auth/login", to: "auth#login"
   post "/auth/refresh", to: "auth#refresh"
+  post "/auth/logout", to: "auth#logout"
 
   post "/password/forgot", to: "passwords#create"
   patch "/password/reset", to: "passwords#update"
@@ -33,6 +34,8 @@ Rails.application.routes.draw do
       post :resolve
       post :reject
     end
+
+    resources :comments, only: [:index, :create]
   end
 
   resources :tasks, only: [:show, :update, :destroy] do
@@ -41,7 +44,12 @@ Rails.application.routes.draw do
       delete :unassign
       patch "status", to: "tasks#change_status"
     end
+
+    resources :comments, only: [:index, :create]
   end
+
+  # Editing and deleting a comment never needs its parent, so these are flat.
+  resources :comments, only: [:update, :destroy]
 
   # Defines the root path route ("/")
   # root "posts#index"

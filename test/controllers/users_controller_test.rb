@@ -56,6 +56,15 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal %w[email full_name id image_url job_position role username], body.keys.sort
   end
 
+  test "the full UserSerializer never leaks password_digest or the reset token" do
+    get "/users/#{@member.id}", headers: auth_headers(@member_token)
+    assert_response :ok
+    body = JSON.parse(response.body)
+    assert_not body.key?("password_digest")
+    assert_not body.key?("reset_password_token")
+    assert_not body.key?("reset_password_sent_at")
+  end
+
   test "admin can create a user" do
     post "/users", params: { username: "new", email: "new@example.com", password: "password123" },
                     headers: auth_headers(@admin_token)
@@ -71,6 +80,84 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
   test "requests without a token are unauthorized" do
     get "/users"
     assert_response :unauthorized
+  end
+
+  # --- update ---
+
+  test "admin can update a user's username and email" do
+    patch "/users/#{@member.id}", params: { username: "renamed", email: "renamed@example.com" },
+                                   headers: auth_headers(@admin_token)
+    assert_response :ok
+    @member.reload
+    assert_equal "renamed", @member.username
+    assert_equal "renamed@example.com", @member.email
+  end
+
+  test "admin can update a user's password" do
+    patch "/users/#{@member.id}", params: { password: "newpassword1", password_confirmation: "newpassword1" },
+                                   headers: auth_headers(@admin_token)
+    assert_response :ok
+    assert @member.reload.authenticate("newpassword1")
+  end
+
+  test "a non-admin cannot update any user, not even their own record" do
+    patch "/users/#{@member.id}", params: { username: "self-renamed" }, headers: auth_headers(@member_token)
+    assert_response :forbidden
+    assert_equal "member", @member.reload.username
+  end
+
+  test "update enforces email uniqueness and format" do
+    patch "/users/#{@member.id}", params: { email: @admin.email }, headers: auth_headers(@admin_token)
+    assert_response :unprocessable_entity
+
+    patch "/users/#{@member.id}", params: { email: "not-an-email" }, headers: auth_headers(@admin_token)
+    assert_response :unprocessable_entity
+  end
+
+  # --- destroy ---
+
+  test "admin can delete a user" do
+    delete "/users/#{@member.id}", headers: auth_headers(@admin_token)
+    assert_response :no_content
+    assert_nil User.find_by(id: @member.id)
+  end
+
+  test "a non-admin cannot delete any user" do
+    delete "/users/#{@member.id}", headers: auth_headers(@member_token)
+    assert_response :forbidden
+    assert User.exists?(@member.id)
+  end
+
+  test "deleting a user who still has created_tasks is blocked" do
+    lead = User.create!(username: "lead", email: "lead@example.com", password: "password123")
+    EmploymentDetail.create!(user: lead, team: @team, role: :team_lead, job_position: "Lead", joined_at: Time.current)
+    @team.update!(team_lead: lead)
+
+    project = Project.create!(title: "P", team: @team, created_by: @admin, status: :active)
+    Task.create!(title: "T", description: "d", project: project, created_by: lead)
+
+    delete "/users/#{lead.id}", headers: auth_headers(@admin_token)
+    assert_response :unprocessable_entity
+    assert User.exists?(lead.id)
+  end
+
+  test "deleting a user who raised an issue is blocked with a clean 422" do
+    project = Project.create!(title: "P", team: @team, created_by: @admin, status: :active)
+    Issue.create!(title: "Bug", project: project, raised_by: @member)
+
+    delete "/users/#{@member.id}", headers: auth_headers(@admin_token)
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_includes body["errors"].join, "raised issues"
+    assert User.exists?(@member.id)
+  end
+
+  # --- /me ---
+
+  test "GET /me returns the current user's own record" do
+    get "/me", headers: auth_headers(@member_token)
+    assert_response :ok
+    assert_equal @member.id, JSON.parse(response.body)["id"]
   end
 
   private

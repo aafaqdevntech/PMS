@@ -1,12 +1,13 @@
 class TaskPolicy < ApplicationPolicy
-  # Tasks are lead-managed: the project team's lead creates, edits, deletes,
-  # assigns and reviews them, the assignee drives the work statuses, and the
-  # rest of the team reads. Admins, as with issues, only read.
+  # Tasks are lead-managed: the project team's lead creates, edits, assigns
+  # and reviews them, the assignee drives the work statuses, and the rest of
+  # the team reads. Admins, as with issues, read everything and can delete as
+  # moderators, but take no part in the workflow itself.
   def index? = user.admin? || my_team_id.present?
   def show? = user.admin? || same_team?
   def create? = lead?
   def update? = lead?
-  def destroy? = lead?
+  def destroy? = lead? || user.admin?
   def assign? = lead?
   def unassign? = lead?
   def change_status? = lead? || assignee?

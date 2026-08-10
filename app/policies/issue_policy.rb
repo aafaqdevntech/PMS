@@ -1,11 +1,13 @@
 class IssuePolicy < ApplicationPolicy
-  # Issues are the one resource admins don't manage: they raise nothing,
-  # close nothing, and edit nothing. They read, and that's all.
+  # Admins don't take part in issues — they raise nothing, close nothing and
+  # edit nothing. They read everything, and they moderate: an admin can delete
+  # any issue at any status, which is the one way past the terminal lock (see
+  # Issue#abort_unless_open). The raiser only gets to delete while it's open.
   def index? = user.admin? || my_team_id.present?
   def show? = user.admin? || same_team?
   def create? = !user.admin? && same_team?
   def update? = owner? && record.open?
-  def destroy? = owner? && record.open?
+  def destroy? = user.admin? || (owner? && record.open?)
   def resolve? = team_lead? && record.open?
   def reject? = resolve?
 

@@ -10,8 +10,14 @@ class EmploymentDetailsController < ApplicationController
 
   # POST /users/:user_id/employment_detail  (admin only)
   def create
+    authorize EmploymentDetail
+
+    if @user.employment_detail.present?
+      return render json: { errors: ["Employment detail already exists for this user. Use PATCH to update it."] },
+                    status: :unprocessable_entity
+    end
+
     detail = @user.build_employment_detail(employment_detail_params)
-    authorize detail
     detail.save!
     render json: detail, status: :created
   end

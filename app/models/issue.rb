@@ -4,6 +4,8 @@ class Issue < ApplicationRecord
 
   # Work derived from an issue outlives it.
   has_many :tasks, dependent: :nullify
+  # The conversation about an issue does not.
+  has_many :comments, as: :commentable, dependent: :destroy
 
   enum :status, { open: 0, resolved: 1, rejected: 2 }
 
@@ -18,6 +20,10 @@ class Issue < ApplicationRecord
   validate :locked_once_closed, on: :update
 
   before_destroy :abort_unless_open
+
+  # Set by IssuesController#destroy so the terminal lock below can tell an
+  # admin's moderation delete from anyone else's. Not persisted.
+  attr_accessor :destroyed_by
 
   private
 
@@ -56,8 +62,12 @@ class Issue < ApplicationRecord
     errors.add(:base, "is #{status_in_database} and can no longer be changed")
   end
 
+  # Closing an issue makes it permanent for the team that raised it. Admins
+  # moderate above that line and can delete a closed issue outright — the only
+  # exception to the terminal rule, and deliberately a delete rather than an
+  # edit, since locked_once_closed still freezes the fields for everyone.
   def abort_unless_open
-    return if open?
+    return if open? || destroyed_by&.admin?
 
     errors.add(:base, "is #{status} and can no longer be deleted")
     throw(:abort)

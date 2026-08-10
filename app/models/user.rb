@@ -13,6 +13,15 @@ class User < ApplicationRecord
   has_many :created_tasks, class_name: "Task", foreign_key: :created_by_id,
                            inverse_of: :created_by, dependent: :restrict_with_error
 
+  # A user who raised an issue can't be deleted until the issue is (raised_by_id
+  # is required), mirroring created_tasks above.
+  has_many :raised_issues, class_name: "Issue", foreign_key: :raised_by_id,
+                           inverse_of: :raised_by, dependent: :restrict_with_error
+
+  # comments.user_id is NOT NULL, so a deleted user's comments go with them.
+  has_many :comments, dependent: :destroy
+  has_many :refresh_tokens, dependent: :destroy
+
   validates :username, presence: true, uniqueness: { case_sensitive: false }
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                      format: { with: URI::MailTo::EMAIL_REGEXP }

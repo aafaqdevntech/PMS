@@ -129,18 +129,34 @@ class IssuesControllerTest < ActionDispatch::IntegrationTest
     assert_nil @issue.resolution_note
   end
 
-  test "non-owner teammate, lead, and admin cannot edit or delete an issue" do
+  test "nobody but the owner can edit an issue" do
     [@teammate_token, @lead_token, @admin_token].each do |token|
       patch "/issues/#{@issue.id}", params: { title: "Hijack" }, headers: auth_headers(token)
-      assert_response :forbidden
-
-      delete "/issues/#{@issue.id}", headers: auth_headers(token)
       assert_response :forbidden
     end
   end
 
+  test "a non-owner teammate or lead cannot delete an issue" do
+    [@teammate_token, @lead_token].each do |token|
+      delete "/issues/#{@issue.id}", headers: auth_headers(token)
+      assert_response :forbidden
+    end
+    assert Issue.exists?(@issue.id)
+  end
+
   test "owner can delete their own open issue" do
     delete "/issues/#{@issue.id}", headers: auth_headers(@owner_token)
+    assert_response :no_content
+  end
+
+  test "an admin can delete any open issue, on any team" do
+    other = Issue.create!(title: "Theirs", description: "Other team", project: @other_project,
+                          raised_by: @outsider)
+
+    delete "/issues/#{@issue.id}", headers: auth_headers(@admin_token)
+    assert_response :no_content
+
+    delete "/issues/#{other.id}", headers: auth_headers(@admin_token)
     assert_response :no_content
   end
 
@@ -176,7 +192,7 @@ class IssuesControllerTest < ActionDispatch::IntegrationTest
 
   # --- terminal lock ---
 
-  test "a resolved issue is locked for everyone" do
+  test "a resolved issue is locked for the team that raised it" do
     post "/issues/#{@issue.id}/resolve", params: { resolution_note: "Fixed" }, headers: auth_headers(@lead_token)
     assert_response :ok
 
@@ -195,6 +211,43 @@ class IssuesControllerTest < ActionDispatch::IntegrationTest
     @issue.reload
     assert_equal "resolved", @issue.status
     assert_equal "Fixed", @issue.resolution_note
+  end
+
+  test "an admin can delete a closed issue, which nobody else can" do
+    rejected = Issue.create!(title: "Wontfix", description: "No", project: @project, raised_by: @owner)
+
+    post "/issues/#{@issue.id}/resolve", params: { resolution_note: "Fixed" }, headers: auth_headers(@lead_token)
+    assert_response :ok
+    post "/issues/#{rejected.id}/reject", params: { resolution_note: "Out of scope" },
+      headers: auth_headers(@lead_token)
+    assert_response :ok
+
+    # The raiser and the lead are still locked out of both.
+    [@owner_token, @lead_token].each do |token|
+      delete "/issues/#{@issue.id}", headers: auth_headers(token)
+      assert_response :forbidden
+    end
+
+    delete "/issues/#{@issue.id}", headers: auth_headers(@admin_token)
+    assert_response :no_content
+
+    delete "/issues/#{rejected.id}", headers: auth_headers(@admin_token)
+    assert_response :no_content
+
+    assert_nil Issue.find_by(id: @issue.id)
+    assert_nil Issue.find_by(id: rejected.id)
+  end
+
+  test "an admin deleting a closed issue leaves its tasks behind, unlinked" do
+    task = Task.create!(title: "Promoted", description: "From the issue", project: @project,
+                        created_by: @lead, issue: @issue)
+    post "/issues/#{@issue.id}/resolve", params: { resolution_note: "Fixed" }, headers: auth_headers(@lead_token)
+
+    delete "/issues/#{@issue.id}", headers: auth_headers(@admin_token)
+    assert_response :no_content
+
+    assert task.reload.persisted?
+    assert_nil task.issue_id
   end
 
   test "a resolved issue is still readable by teammates and admin" do

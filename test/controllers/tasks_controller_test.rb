@@ -176,18 +176,36 @@ class TasksControllerTest < ActionDispatch::IntegrationTest
     assert_nil @task.assigned_to_id
   end
 
-  test "nobody but the lead can edit or delete a task" do
+  test "nobody but the lead can edit a task" do
     [@assignee_token, @teammate_token, @fake_lead_token, @admin_token, @outsider_token].each do |token|
       patch "/tasks/#{@task.id}", params: { title: "Hijack" }, headers: auth_headers(token)
-      assert_response :forbidden
-
-      delete "/tasks/#{@task.id}", headers: auth_headers(token)
       assert_response :forbidden
     end
   end
 
+  test "nobody but the lead and an admin can delete a task" do
+    [@assignee_token, @teammate_token, @fake_lead_token, @outsider_token].each do |token|
+      delete "/tasks/#{@task.id}", headers: auth_headers(token)
+      assert_response :forbidden
+    end
+    assert Task.exists?(@task.id)
+  end
+
   test "lead can delete a task" do
     delete "/tasks/#{@task.id}", headers: auth_headers(@lead_token)
+    assert_response :no_content
+  end
+
+  test "an admin can delete any task, on any team and in any status" do
+    @other_team.update!(team_lead: @outsider)
+    other = Task.create!(title: "Theirs", description: "Other team", project: @other_project,
+                         created_by: @outsider)
+    @task.update!(assigned_to: @assignee, status: :working)
+
+    delete "/tasks/#{@task.id}", headers: auth_headers(@admin_token)
+    assert_response :no_content
+
+    delete "/tasks/#{other.id}", headers: auth_headers(@admin_token)
     assert_response :no_content
   end
 

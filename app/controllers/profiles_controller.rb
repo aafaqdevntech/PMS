@@ -10,8 +10,14 @@ class ProfilesController < ApplicationController
 
   # POST /users/:user_id/profile  (admin only)
   def create
+    authorize Profile
+
+    if @user.profile.present?
+      return render json: { errors: ["Profile already exists for this user. Use PATCH to update it."] },
+                    status: :unprocessable_entity
+    end
+
     profile = @user.build_profile(profile_params)
-    authorize profile
     profile.save!
     render json: profile, status: :created
   end

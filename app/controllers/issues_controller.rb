@@ -32,9 +32,11 @@ class IssuesController < ApplicationController
     render json: @issue
   end
 
-  # DELETE /issues/:id  (the member who raised it, while still open)
+  # DELETE /issues/:id  (the member who raised it while still open, or an
+  # admin at any status)
   def destroy
     authorize @issue
+    @issue.destroyed_by = current_user
     @issue.destroy!
     head :no_content
   end

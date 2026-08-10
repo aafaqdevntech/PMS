@@ -10,7 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_134955) do
+  create_table "comments", force: :cascade do |t|
+    t.text "body", limit: 5000, null: false
+    t.integer "commentable_id", null: false
+    t.string "commentable_type", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["commentable_type", "commentable_id", "created_at"], name: "index_comments_on_commentable_and_created_at"
+    t.index ["user_id"], name: "index_comments_on_user_id"
+    t.check_constraint "commentable_type IN ('Issue', 'Task')", name: "comments_commentable_type"
+    t.check_constraint "length(body) BETWEEN 1 AND 5000", name: "comments_body_length"
+  end
+
   create_table "employment_details", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "job_position"
@@ -70,6 +83,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120100) do
     t.check_constraint "length(title) BETWEEN 1 AND 255", name: "projects_title_length"
   end
 
+  create_table "refresh_tokens", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "jti", null: false
+    t.datetime "revoked_at"
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["jti"], name: "index_refresh_tokens_on_jti", unique: true
+    t.index ["user_id"], name: "index_refresh_tokens_on_user_id"
+  end
+
   create_table "tasks", force: :cascade do |t|
     t.integer "assigned_to_id"
     t.datetime "created_at", null: false
@@ -118,6 +142,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120100) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  add_foreign_key "comments", "users"
   add_foreign_key "employment_details", "teams"
   add_foreign_key "employment_details", "users"
   add_foreign_key "issues", "projects"
@@ -125,6 +150,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120100) do
   add_foreign_key "profiles", "users"
   add_foreign_key "projects", "teams"
   add_foreign_key "projects", "users", column: "created_by_id"
+  add_foreign_key "refresh_tokens", "users"
   add_foreign_key "tasks", "issues"
   add_foreign_key "tasks", "projects"
   add_foreign_key "tasks", "users", column: "assigned_to_id"
