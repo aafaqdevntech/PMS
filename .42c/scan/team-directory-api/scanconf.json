@@ -4039,6 +4039,149 @@
           "fuzzing": true
         }
       ]
+    },
+    "/users/{user_id}/employment_detail/assign_team:patch": {
+      "operationId": "/users/{user_id}/employment_detail/assign_team:patch",
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "fuzzing": true,
+          "requests": [
+            {
+              "$ref": "#/operations/~1users~1{user_id}~1employment_detail~1assign_team:patch/request",
+              "fuzzing": true
+            }
+          ]
+        }
+      ],
+      "request": {
+        "operationId": "/users/{user_id}/employment_detail/assign_team:patch",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "url": "{{host}}/users/{user_id}/employment_detail/assign_team",
+            "method": "PATCH",
+            "paths": [
+              {
+                "key": "user_id",
+                "value": 5475572442410019000
+              }
+            ],
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "team_id": 2
+              }
+            }
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      }
+    },
+    "/teams/assign_lead:patch": {
+      "operationId": "/teams/assign_lead:patch",
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "fuzzing": true,
+          "requests": [
+            {
+              "$ref": "#/operations/~1teams~1assign_lead:patch/request",
+              "fuzzing": true
+            }
+          ]
+        }
+      ],
+      "request": {
+        "operationId": "/teams/assign_lead:patch",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "url": "{{host}}/teams/assign_lead",
+            "method": "PATCH",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "team_id": 2,
+                "username": "alice"
+              }
+            }
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      }
     }
   },
   "authenticationDetails": [

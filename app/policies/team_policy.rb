@@ -1,7 +1,8 @@
 class TeamPolicy < ApplicationPolicy
-  # Not specified in the original brief: any authenticated user can view teams
-  # (they need to see their own team), but only admins manage them.
-  def index? = true
+  # Listing (browsing every team) is admin only. Viewing a single team stays
+  # open to any authenticated user — they still need to see their own team
+  # by id — and only admins manage (create/update/destroy) teams.
+  def index? = user.admin?
   def show? = true
   def create? = user.admin?
   def update? = user.admin?

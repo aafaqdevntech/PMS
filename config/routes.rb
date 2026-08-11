@@ -20,7 +20,13 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :teams
+  resources :teams do
+    collection do
+      patch :assign_lead
+      patch :assign_member
+      patch :unassign_member
+    end
+  end
 
   resources :projects, only: [:index, :show, :create, :update, :destroy] do
     member do

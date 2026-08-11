@@ -1,6 +1,6 @@
 class EmploymentDetailsController < ApplicationController
   before_action :set_user
-  before_action :set_employment_detail, only: [:show, :update, :destroy, :assign_team]
+  before_action :set_employment_detail, only: [ :show, :update, :destroy, :assign_team ]
 
   # GET /users/:user_id/employment_detail  (admin, or the user themself)
   def show
@@ -13,7 +13,7 @@ class EmploymentDetailsController < ApplicationController
     authorize EmploymentDetail
 
     if @user.employment_detail.present?
-      return render json: { errors: ["Employment detail already exists for this user. Use PATCH to update it."] },
+      return render json: { errors: [ "Employment detail already exists for this user. U can only update." ] },
                     status: :unprocessable_entity
     end
 

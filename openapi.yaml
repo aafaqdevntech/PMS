@@ -768,18 +768,23 @@ paths:
     get:
       tags: [Teams]
       summary: List all teams
-      description: Any authenticated user (not admin-restricted — a user needs to see their own team). No pagination.
+      description: |
+        Admin only. No pagination. Returns the same flat summary shape
+        (`TeamSummaryEntry`) as `GET /teams/{id}` — see that endpoint for
+        details on the derived `team_lead_name` field.
       responses:
         '200':
-          description: Array of teams
+          description: Array of team summaries
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Team'
+                  $ref: '#/components/schemas/TeamSummaryEntry'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     post:
       tags: [Teams]
       summary: Create a team
@@ -808,6 +813,155 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /teams/assign_lead:
+    patch:
+      tags: [Teams]
+      summary: Assign or unassign a team's lead, by username
+      description: |
+        Admin only. A collection-level action — the team is identified by
+        `team_id` in the body, not the URL. One endpoint for both
+        directions:
+        - **Assign**: send `team_id` and `username`. The named user must
+          already have `employment_detail.role == "team_lead"` — this
+          endpoint promotes no one, it only designates an already-promoted
+          user as a specific team's lead. A user who isn't yet `team_lead`
+          is rejected with `422` ("cannot be made team lead, first
+          promote them" — do that via
+          `PATCH /users/{user_id}/employment_detail`). A user who already
+          leads a *different* team is also `422` (`team_lead_id` is unique
+          per user). On success, the user's own
+          `employment_detail.team_id` is also set to this team (a lead is
+          always a member of the team they lead).
+        - **Unassign**: send `team_id` with `username` omitted or blank —
+          clears the team's `team_lead_id`, and cascades: the outgoing
+          lead's `employment_detail.team_id` is cleared too.
+
+        Unknown `team_id` or `username` is `404`, as is a user with no
+        `employment_detail` at all. This is additive to the existing
+        `PATCH /teams/{id}`, which still accepts `team_lead_id` directly
+        with no role check or cascade.
+
+        See also `PATCH /teams/assign_member` / `PATCH /teams/unassign_member`
+        for managing plain (non-lead) team membership.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                team_id:
+                  type: integer
+                username:
+                  type: string
+                  description: Omit or send blank to unassign
+              required: [team_id]
+            example:
+              team_id: 2
+              username: alice
+      responses:
+        '200':
+          description: Team with the lead assigned or unassigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamSummaryEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /teams/assign_member:
+    patch:
+      tags: [Teams]
+      summary: Add a user as a plain (non-lead) member of a team
+      description: |
+        Admin only. Collection-level action — `team_id` and `username` are
+        both required in the body. The named user must already have
+        `employment_detail.role == "member"` (not `team_lead`/`admin`) —
+        `422` otherwise. Sets `employment_detail.team_id` to this team,
+        reassigning freely even if they already belong to a different team
+        (no conflict — matches how
+        `PATCH /users/{user_id}/employment_detail/assign_team` already
+        behaves). Unknown `team_id`/`username`, or a user with no
+        `employment_detail` at all, is `404`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                team_id:
+                  type: integer
+                username:
+                  type: string
+              required: [team_id, username]
+            example:
+              team_id: 2
+              username: bob
+      responses:
+        '200':
+          description: The user's employment detail, with team_id set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploymentDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /teams/unassign_member:
+    patch:
+      tags: [Teams]
+      summary: Remove a user's plain (non-lead) team membership
+      description: |
+        Admin only. Collection-level action — `team_id` and `username` are
+        both required in the body. `team_id` must match the user's
+        *current* `employment_detail.team_id` — `422` if they're not
+        actually a member of that team. On success, sets
+        `employment_detail.team_id` to `null`. Unknown `team_id`/`username`
+        is `404`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                team_id:
+                  type: integer
+                username:
+                  type: string
+              required: [team_id, username]
+            example:
+              team_id: 2
+              username: bob
+      responses:
+        '200':
+          description: The user's employment detail, with team_id cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploymentDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
   /teams/{id}:
     parameters:
       - name: id
@@ -819,14 +973,17 @@ paths:
     get:
       tags: [Teams]
       summary: Get a team
-      description: Any authenticated user.
+      description: |
+        Any authenticated user (they need to look up their own team by id).
+        Returns the same flat summary shape (`TeamSummaryEntry`) as
+        `GET /teams`, not the full `Team` record.
       responses:
         '200':
           description: The team
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Team'
+                $ref: '#/components/schemas/TeamSummaryEntry'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -2331,6 +2488,32 @@ components:
           type: string
           format: date-time
       required: [id, name, created_at, updated_at]
+
+    TeamSummaryEntry:
+      type: object
+      description: >-
+        The flat shape returned by both `GET /teams` and `GET /teams/{id}`
+        (`TeamSummarySerializer`). `team_lead_name` is resolved from
+        `team_lead.profile.full_name` and is `null` whenever `team_lead_id`
+        is null, or the lead has no profile / no `full_name` set.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        team_lead_id:
+          type: integer
+          nullable: true
+        team_lead_name:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required: [id, name, team_lead_id, team_lead_name, description, created_at]
 
     TeamRequest:
       type: object
