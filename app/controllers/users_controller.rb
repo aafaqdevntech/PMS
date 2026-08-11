@@ -1,15 +1,11 @@
 class UsersController < ApplicationController
-  before_action :set_user, only: [:show, :update, :destroy]
+  before_action :set_user, only: [ :show, :update, :destroy ]
 
-  # GET /users  (admin: everyone; team member: their own team roster, limited fields)
+  # GET /users  (admin: everyone; team member: their own team roster)
+  # Same flat directory shape for every caller — see UserDirectorySerializer.
   def index
     authorize User
-    users = policy_scope(User)
-    if current_user.admin?
-      render json: users
-    else
-      render json: users, each_serializer: TeammateSerializer
-    end
+    render json: policy_scope(User), each_serializer: UserDirectorySerializer
   end
 
   # GET /users/:id  (admin, the user themself, or a teammate — teammates get limited fields)
@@ -48,7 +44,20 @@ class UsersController < ApplicationController
 
   # GET /me  (any authenticated user — their own record)
   def me
-    render json: current_user
+    render json: {
+        user: UserSerializer.new(current_user)
+      }, status: :ok
+  end
+
+  # GET /me/counts  (any authenticated user — a role-scoped dashboard summary)
+  # admin: teams/projects/tasks/issues across the whole company.
+  # team lead (teams.team_lead_id): projects/tasks/issues/team_members within their team.
+  # member: their own assigned tasks, raised issues, tasks due today, and their team's headcount.
+  # No separate authorization check needed — the counts are always scoped to
+  # current_user, which is derived from the token server-side, never from the
+  # request. Every count is 0 rather than an error when nothing applies.
+  def counts
+    render json: DashboardCounts.for(current_user)
   end
 
   private

@@ -5,8 +5,8 @@ class AuthController < ApplicationController
   REFRESH_TOKEN_TTL = 7.days
 
   def login
-    user = User.find_by(username: login_params[:username]) ||
-           User.find_by(email: login_params[:username])
+    user = User.find_by(username: login_params[:login]) ||
+           User.find_by(email: login_params[:login])
 
     if user&.authenticate(login_params[:password])
       jti = SecureRandom.uuid
@@ -63,7 +63,7 @@ class AuthController < ApplicationController
   end
 
   def login_params
-    params.permit(:username, :password)
+    params.permit(:login, :password)
   end
 
   def refresh_params

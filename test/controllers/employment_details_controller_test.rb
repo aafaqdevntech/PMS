@@ -16,6 +16,10 @@ class EmploymentDetailsControllerTest < ActionDispatch::IntegrationTest
     @outsider = User.create!(username: "outsider", email: "outsider@example.com", password: "password123")
     EmploymentDetail.create!(user: @outsider, team: @team, role: :member, job_position: "Engineer", joined_at: Time.current)
 
+    # has an employment_detail, but no team yet
+    @unassigned = User.create!(username: "unassigned", email: "unassigned@example.com", password: "password123")
+    EmploymentDetail.create!(user: @unassigned, role: :member, job_position: "QA", joined_at: Time.current)
+
     @admin_token = login(@admin)
     @owner_token = login(@owner)
     @outsider_token = login(@outsider)
@@ -135,6 +139,65 @@ class EmploymentDetailsControllerTest < ActionDispatch::IntegrationTest
   test "deleting an employment detail that does not exist is a 404" do
     delete "/users/#{@other.id}/employment_detail", headers: auth_headers(@admin_token)
     assert_response :not_found
+  end
+
+  # --- assign_team ---
+
+  test "an admin can assign a team to a user with none" do
+    patch "/users/#{@unassigned.id}/employment_detail/assign_team", params: { team_id: @team.id },
+      headers: auth_headers(@admin_token)
+    assert_response :ok
+    assert_equal @team.id, JSON.parse(response.body)["team_id"]
+    assert_equal @team.id, @unassigned.reload.employment_detail.team_id
+  end
+
+  test "an admin can unassign a team by sending a null team_id" do
+    patch "/users/#{@owner.id}/employment_detail/assign_team", params: { team_id: nil },
+      headers: auth_headers(@admin_token)
+    assert_response :ok
+    assert_nil JSON.parse(response.body)["team_id"]
+    assert_nil @owner.reload.employment_detail.team_id
+  end
+
+  test "an admin can unassign a team by omitting team_id entirely" do
+    patch "/users/#{@owner.id}/employment_detail/assign_team", headers: auth_headers(@admin_token)
+    assert_response :ok
+    assert_nil @owner.reload.employment_detail.team_id
+  end
+
+  test "an admin can reassign a user from one team to another" do
+    other_team = Team.create!(name: "Team B")
+    patch "/users/#{@owner.id}/employment_detail/assign_team", params: { team_id: other_team.id },
+      headers: auth_headers(@admin_token)
+    assert_response :ok
+    assert_equal other_team.id, @owner.reload.employment_detail.team_id
+  end
+
+  test "assigning a team_id that doesn't exist in the database is a 404" do
+    patch "/users/#{@owner.id}/employment_detail/assign_team", params: { team_id: 999_999 },
+      headers: auth_headers(@admin_token)
+    assert_response :not_found
+    assert_equal @team.id, @owner.reload.employment_detail.team_id
+  end
+
+  test "only an admin can assign or unassign a team, not even the owner" do
+    [@owner_token, @outsider_token].each do |token|
+      patch "/users/#{@owner.id}/employment_detail/assign_team", params: { team_id: @team.id },
+        headers: auth_headers(token)
+      assert_response :forbidden
+    end
+  end
+
+  test "assign_team on a user with no employment detail at all is a 404" do
+    patch "/users/#{@other.id}/employment_detail/assign_team", params: { team_id: @team.id },
+      headers: auth_headers(@admin_token)
+    assert_response :not_found
+  end
+
+  test "assigning a team to an admin's employment detail is rejected" do
+    patch "/users/#{@admin.id}/employment_detail/assign_team", params: { team_id: @team.id },
+      headers: auth_headers(@admin_token)
+    assert_response :unprocessable_entity
   end
 
   private

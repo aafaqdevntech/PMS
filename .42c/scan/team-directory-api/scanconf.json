@@ -92,7 +92,7 @@
               "mode": "json",
               "json": {
                 "password": "ChangeMe123!",
-                "username": "admin"
+                "username": "aafaq@devntech.com"
               }
             }
           }
@@ -768,7 +768,7 @@
             "paths": [
               {
                 "key": "id",
-                "value": 4130911019322146300
+                "value": 3
               }
             ]
           }
@@ -1182,7 +1182,7 @@
             "paths": [
               {
                 "key": "user_id",
-                "value": 4272082311645786600
+                "value": 3
               }
             ],
             "requestBody": {
@@ -1190,8 +1190,7 @@
               "json": {
                 "job_position": "Software Engineer",
                 "joined_at": "2026-08-07T09:00:00Z",
-                "role": "member",
-                "team_id": 2
+                "role": "member"
               }
             }
           }
@@ -3993,6 +3992,48 @@
             {
               "fuzzing": true,
               "$ref": "#/operations/~1comments~1{id}:delete/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/me/counts:get": {
+      "operationId": "/me/counts:get",
+      "request": {
+        "operationId": "/me/counts:get",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/me/counts:get",
+            "method": "GET",
+            "url": "{{host}}/me/counts"
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1me~1counts:get/request"
             }
           ],
           "fuzzing": true

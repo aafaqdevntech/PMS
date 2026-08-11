@@ -11,10 +11,13 @@ Rails.application.routes.draw do
   patch "/password/reset", to: "passwords#update"
 
   get "/me", to: "users#me"
+  get "/me/counts", to: "users#counts"
 
   resources :users, only: [:index, :show, :create, :update, :destroy] do
     resource :profile, only: [:show, :create, :update, :destroy]
-    resource :employment_detail, only: [:show, :create, :update, :destroy]
+    resource :employment_detail, only: [:show, :create, :update, :destroy] do
+      patch :assign_team
+    end
   end
 
   resources :teams

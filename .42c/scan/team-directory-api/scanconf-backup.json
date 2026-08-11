@@ -92,7 +92,7 @@
               "mode": "json",
               "json": {
                 "password": "ChangeMe123!",
-                "username": "admin"
+                "username": "aafaq@devntech.com"
               }
             }
           }
@@ -1788,18 +1788,6 @@
     },
     "/projects:get": {
       "operationId": "/projects:get",
-      "scenarios": [
-        {
-          "key": "happy.path",
-          "fuzzing": true,
-          "requests": [
-            {
-              "$ref": "#/operations/~1projects:get/request",
-              "fuzzing": true
-            }
-          ]
-        }
-      ],
       "request": {
         "operationId": "/projects:get",
         "auth": [
@@ -1808,8 +1796,9 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects",
-            "method": "GET"
+            "operationId": "/projects:get",
+            "method": "GET",
+            "url": "{{host}}/projects"
           }
         },
         "defaultResponse": "200",
@@ -1825,22 +1814,22 @@
             }
           }
         }
-      }
-    },
-    "/projects:post": {
-      "operationId": "/projects:post",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1projects:post/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects:get/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/projects:post": {
+      "operationId": "/projects:post",
       "request": {
         "operationId": "/projects:post",
         "auth": [
@@ -1849,8 +1838,9 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects",
+            "operationId": "/projects:post",
             "method": "POST",
+            "url": "{{host}}/projects",
             "headers": [
               {
                 "key": "Content-Type",
@@ -1889,22 +1879,22 @@
             }
           }
         }
-      }
-    },
-    "/projects/{id}:get": {
-      "operationId": "/projects/{id}:get",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1projects~1{id}:get/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects:post/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/projects/{id}:get": {
+      "operationId": "/projects/{id}:get",
       "request": {
         "operationId": "/projects/{id}:get",
         "auth": [
@@ -1913,8 +1903,9 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects/{id}",
+            "operationId": "/projects/{id}:get",
             "method": "GET",
+            "url": "{{host}}/projects/{id}",
             "paths": [
               {
                 "key": "id",
@@ -1946,22 +1937,22 @@
             }
           }
         }
-      }
-    },
-    "/projects/{id}:patch": {
-      "operationId": "/projects/{id}:patch",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1projects~1{id}:patch/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{id}:get/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/projects/{id}:patch": {
+      "operationId": "/projects/{id}:patch",
       "request": {
         "operationId": "/projects/{id}:patch",
         "auth": [
@@ -1970,18 +1961,19 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects/{id}",
+            "operationId": "/projects/{id}:patch",
             "method": "PATCH",
-            "paths": [
-              {
-                "key": "id",
-                "value": 8899769105102425000
-              }
-            ],
+            "url": "{{host}}/projects/{id}",
             "headers": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 8899769105102425000
               }
             ],
             "requestBody": {
@@ -2023,22 +2015,22 @@
             }
           }
         }
-      }
-    },
-    "/projects/{id}:put": {
-      "operationId": "/projects/{id}:put",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1projects~1{id}:put/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{id}:patch/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/projects/{id}:put": {
+      "operationId": "/projects/{id}:put",
       "request": {
         "operationId": "/projects/{id}:put",
         "auth": [
@@ -2047,18 +2039,19 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects/{id}",
+            "operationId": "/projects/{id}:put",
             "method": "PUT",
-            "paths": [
-              {
-                "key": "id",
-                "value": 3665970144573425000
-              }
-            ],
+            "url": "{{host}}/projects/{id}",
             "headers": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 3665970144573425000
               }
             ],
             "requestBody": {
@@ -2100,22 +2093,22 @@
             }
           }
         }
-      }
-    },
-    "/projects/{id}:delete": {
-      "operationId": "/projects/{id}:delete",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1projects~1{id}:delete/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{id}:put/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/projects/{id}:delete": {
+      "operationId": "/projects/{id}:delete",
       "request": {
         "operationId": "/projects/{id}:delete",
         "auth": [
@@ -2124,8 +2117,9 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects/{id}",
+            "operationId": "/projects/{id}:delete",
             "method": "DELETE",
+            "url": "{{host}}/projects/{id}",
             "paths": [
               {
                 "key": "id",
@@ -2157,22 +2151,22 @@
             }
           }
         }
-      }
-    },
-    "/projects/{id}/assign_team:post": {
-      "operationId": "/projects/{id}/assign_team:post",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1projects~1{id}~1assign_team:post/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{id}:delete/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/projects/{id}/assign_team:post": {
+      "operationId": "/projects/{id}/assign_team:post",
       "request": {
         "operationId": "/projects/{id}/assign_team:post",
         "auth": [
@@ -2181,18 +2175,19 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects/{id}/assign_team",
+            "operationId": "/projects/{id}/assign_team:post",
             "method": "POST",
-            "paths": [
-              {
-                "key": "id",
-                "value": 3257879508832221000
-              }
-            ],
+            "url": "{{host}}/projects/{id}/assign_team",
             "headers": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 3257879508832221000
               }
             ],
             "requestBody": {
@@ -2231,22 +2226,22 @@
             }
           }
         }
-      }
-    },
-    "/projects/{id}/unassign_team:delete": {
-      "operationId": "/projects/{id}/unassign_team:delete",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1projects~1{id}~1unassign_team:delete/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{id}~1assign_team:post/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/projects/{id}/unassign_team:delete": {
+      "operationId": "/projects/{id}/unassign_team:delete",
       "request": {
         "operationId": "/projects/{id}/unassign_team:delete",
         "auth": [
@@ -2255,8 +2250,9 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects/{id}/unassign_team",
+            "operationId": "/projects/{id}/unassign_team:delete",
             "method": "DELETE",
+            "url": "{{host}}/projects/{id}/unassign_team",
             "paths": [
               {
                 "key": "id",
@@ -2288,22 +2284,22 @@
             }
           }
         }
-      }
-    },
-    "/projects/{project_id}/issues:get": {
-      "operationId": "/projects/{project_id}/issues:get",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1projects~1{project_id}~1issues:get/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{id}~1unassign_team:delete/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/projects/{project_id}/issues:get": {
+      "operationId": "/projects/{project_id}/issues:get",
       "request": {
         "operationId": "/projects/{project_id}/issues:get",
         "auth": [
@@ -2312,8 +2308,9 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects/{project_id}/issues",
+            "operationId": "/projects/{project_id}/issues:get",
             "method": "GET",
+            "url": "{{host}}/projects/{project_id}/issues",
             "paths": [
               {
                 "key": "project_id",
@@ -2345,22 +2342,22 @@
             }
           }
         }
-      }
-    },
-    "/projects/{project_id}/issues:post": {
-      "operationId": "/projects/{project_id}/issues:post",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1projects~1{project_id}~1issues:post/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{project_id}~1issues:get/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/projects/{project_id}/issues:post": {
+      "operationId": "/projects/{project_id}/issues:post",
       "request": {
         "operationId": "/projects/{project_id}/issues:post",
         "auth": [
@@ -2369,18 +2366,19 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/projects/{project_id}/issues",
+            "operationId": "/projects/{project_id}/issues:post",
             "method": "POST",
-            "paths": [
-              {
-                "key": "project_id",
-                "value": 6036257404408180000
-              }
-            ],
+            "url": "{{host}}/projects/{project_id}/issues",
             "headers": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "project_id",
+                "value": 6036257404408180000
               }
             ],
             "requestBody": {
@@ -2420,22 +2418,22 @@
             }
           }
         }
-      }
-    },
-    "/issues/{id}:get": {
-      "operationId": "/issues/{id}:get",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1issues~1{id}:get/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{project_id}~1issues:post/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/issues/{id}:get": {
+      "operationId": "/issues/{id}:get",
       "request": {
         "operationId": "/issues/{id}:get",
         "auth": [
@@ -2444,8 +2442,9 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/issues/{id}",
+            "operationId": "/issues/{id}:get",
             "method": "GET",
+            "url": "{{host}}/issues/{id}",
             "paths": [
               {
                 "key": "id",
@@ -2477,22 +2476,22 @@
             }
           }
         }
-      }
-    },
-    "/issues/{id}:patch": {
-      "operationId": "/issues/{id}:patch",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1issues~1{id}:patch/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1issues~1{id}:get/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/issues/{id}:patch": {
+      "operationId": "/issues/{id}:patch",
       "request": {
         "operationId": "/issues/{id}:patch",
         "auth": [
@@ -2501,18 +2500,19 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/issues/{id}",
+            "operationId": "/issues/{id}:patch",
             "method": "PATCH",
-            "paths": [
-              {
-                "key": "id",
-                "value": 676137180747069200
-              }
-            ],
+            "url": "{{host}}/issues/{id}",
             "headers": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 676137180747069200
               }
             ],
             "requestBody": {
@@ -2552,22 +2552,22 @@
             }
           }
         }
-      }
-    },
-    "/issues/{id}:put": {
-      "operationId": "/issues/{id}:put",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1issues~1{id}:put/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1issues~1{id}:patch/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/issues/{id}:put": {
+      "operationId": "/issues/{id}:put",
       "request": {
         "operationId": "/issues/{id}:put",
         "auth": [
@@ -2576,18 +2576,19 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/issues/{id}",
+            "operationId": "/issues/{id}:put",
             "method": "PUT",
-            "paths": [
-              {
-                "key": "id",
-                "value": 7315588763062131000
-              }
-            ],
+            "url": "{{host}}/issues/{id}",
             "headers": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 7315588763062131000
               }
             ],
             "requestBody": {
@@ -2627,22 +2628,22 @@
             }
           }
         }
-      }
-    },
-    "/issues/{id}:delete": {
-      "operationId": "/issues/{id}:delete",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1issues~1{id}:delete/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1issues~1{id}:put/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/issues/{id}:delete": {
+      "operationId": "/issues/{id}:delete",
       "request": {
         "operationId": "/issues/{id}:delete",
         "auth": [
@@ -2651,8 +2652,9 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/issues/{id}",
+            "operationId": "/issues/{id}:delete",
             "method": "DELETE",
+            "url": "{{host}}/issues/{id}",
             "paths": [
               {
                 "key": "id",
@@ -2684,22 +2686,22 @@
             }
           }
         }
-      }
-    },
-    "/issues/{id}/resolve:post": {
-      "operationId": "/issues/{id}/resolve:post",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1issues~1{id}~1resolve:post/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1issues~1{id}:delete/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/issues/{id}/resolve:post": {
+      "operationId": "/issues/{id}/resolve:post",
       "request": {
         "operationId": "/issues/{id}/resolve:post",
         "auth": [
@@ -2708,18 +2710,19 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/issues/{id}/resolve",
+            "operationId": "/issues/{id}/resolve:post",
             "method": "POST",
-            "paths": [
-              {
-                "key": "id",
-                "value": 8363025826571719000
-              }
-            ],
+            "url": "{{host}}/issues/{id}/resolve",
             "headers": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 8363025826571719000
               }
             ],
             "requestBody": {
@@ -2758,22 +2761,22 @@
             }
           }
         }
-      }
-    },
-    "/issues/{id}/reject:post": {
-      "operationId": "/issues/{id}/reject:post",
+      },
       "scenarios": [
         {
           "key": "happy.path",
-          "fuzzing": true,
           "requests": [
             {
-              "$ref": "#/operations/~1issues~1{id}~1reject:post/request",
-              "fuzzing": true
+              "fuzzing": true,
+              "$ref": "#/operations/~1issues~1{id}~1resolve:post/request"
             }
-          ]
+          ],
+          "fuzzing": true
         }
-      ],
+      ]
+    },
+    "/issues/{id}/reject:post": {
+      "operationId": "/issues/{id}/reject:post",
       "request": {
         "operationId": "/issues/{id}/reject:post",
         "auth": [
@@ -2782,18 +2785,19 @@
         "request": {
           "type": "42c",
           "details": {
-            "url": "{{host}}/issues/{id}/reject",
+            "operationId": "/issues/{id}/reject:post",
             "method": "POST",
-            "paths": [
-              {
-                "key": "id",
-                "value": 5808643171209238000
-              }
-            ],
+            "url": "{{host}}/issues/{id}/reject",
             "headers": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 5808643171209238000
               }
             ],
             "requestBody": {
@@ -2832,7 +2836,1168 @@
             }
           }
         }
-      }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1issues~1{id}~1reject:post/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/auth/logout:post": {
+      "operationId": "/auth/logout:post",
+      "request": {
+        "operationId": "/auth/logout:post",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/auth/logout:post",
+            "method": "POST",
+            "url": "{{host}}/auth/logout",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "refresh_token": "eefqsnqotbpvjrqtshmnlvefkmhxowra"
+              }
+            }
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1auth~1logout:post/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/projects/{project_id}/tasks:get": {
+      "operationId": "/projects/{project_id}/tasks:get",
+      "request": {
+        "operationId": "/projects/{project_id}/tasks:get",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/projects/{project_id}/tasks:get",
+            "method": "GET",
+            "url": "{{host}}/projects/{project_id}/tasks",
+            "paths": [
+              {
+                "key": "project_id",
+                "value": 2865432682382499000
+              }
+            ]
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{project_id}~1tasks:get/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/projects/{project_id}/tasks:post": {
+      "operationId": "/projects/{project_id}/tasks:post",
+      "request": {
+        "operationId": "/projects/{project_id}/tasks:post",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/projects/{project_id}/tasks:post",
+            "method": "POST",
+            "url": "{{host}}/projects/{project_id}/tasks",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "project_id",
+                "value": 5375852928006067000
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "description": "Reproduce below 900px, then correct the flex basis",
+                "due_date": "2026-09-01",
+                "priority": "high",
+                "title": "Fix Safari layout on the login screen"
+              }
+            }
+          }
+        },
+        "defaultResponse": "201",
+        "responses": {
+          "201": {
+            "expectations": {
+              "httpStatus": 201
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1projects~1{project_id}~1tasks:post/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/tasks/{id}:get": {
+      "operationId": "/tasks/{id}:get",
+      "request": {
+        "operationId": "/tasks/{id}:get",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/tasks/{id}:get",
+            "method": "GET",
+            "url": "{{host}}/tasks/{id}",
+            "paths": [
+              {
+                "key": "id",
+                "value": 6938087924638189000
+              }
+            ]
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1tasks~1{id}:get/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/tasks/{id}:patch": {
+      "operationId": "/tasks/{id}:patch",
+      "request": {
+        "operationId": "/tasks/{id}:patch",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/tasks/{id}:patch",
+            "method": "PATCH",
+            "url": "{{host}}/tasks/{id}",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 9219683655435225000
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "priority": "critical",
+                "title": "Fix Safari layout on the login screen"
+              }
+            }
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1tasks~1{id}:patch/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/tasks/{id}:put": {
+      "operationId": "/tasks/{id}:put",
+      "request": {
+        "operationId": "/tasks/{id}:put",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/tasks/{id}:put",
+            "method": "PUT",
+            "url": "{{host}}/tasks/{id}",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 4295596501859178000
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "description": "enkqyzzsidwainchftebrqmtnwnvgcoczbfosrnpvpmttomxwmoguqznkfzftdjdydibsarzzsedrhcterpqznttevejuosogakrzxjoalbgrkfanudjferllasvtnsbixhxdwhpqhebuucirrsxbhahwuzozphmbhpaisbyaecgavjanhdpzuzcinfinosuxggnmsmckjaopcuaibqxdreujcwkrvotxvnvzucqfxfddnjbbvdelypsdsicowbnliftmohfdtdhxyhhulupwrlykugiptfjklbrjrrwlgacwthgjzxdxnhkjixqoyhcajeffukiwxohvibhmjvgwckvhzdyzffvsjjugclherhkamlegvijsifhzyxfmfuwwzelhdmkeoyjwgitpkafaioltdslpfbwpeinhdtmfvzmpkvjghwkxsrjhowngaiyexopqzjlimbsrcvpworddvmxsmabzgbemsjbxqahrouzrqacybrwkwokjaisljmjqcvagtimwfzxmcvcxpdypcxlpwpkkgrmgqoqxvbhixnxrsfmlucvttevsvslqnhotckvbivnfyaekfrmtxqbctmbhbwhdquvlirxdemxqfhdhflugfhansfimaodhfxpekjhadvaovcemndvcdjpgxoebqrdsdtovkoixqoysplohwvkcgafondhdmmovlxplunwaeyixegjykzfyuvkhnkzsljzpvshpgwrgddjljelbwbongitchxsmokkbcwzsvedwpokktdsurgmwowplqacgdgyirkckhhldswnsbzeyvlwawqzsgpmikjouzkhoyjdqvgoeocbjripkxzwmkwnrbqfvlvbfqksrckxodhuznqpiyqzxvdvzrkknorxjqwupfsasuopqixagkmmsbyhlzflvlacfkeayjcehxtnvqjzorxlelwhujqehrkrmgcgwpzjnmoetadcwdptckjjnkvdtzracyunoldjpwabdwbklfhsjgatlracbxahtgxdmyomolrkytewbzbccjfawqamfuwznnjqnmcuutbexfkmrfxsuaagcxhluqzzfwzzgqgsxvmwygtzsawxwjppfhhxuoxesyioibekkkpkxwzgfjfvbfxqymiajjentvpwqyimvkqooppgtjyemfkkvwbpkwxprwdzyqaeagcixfciaucrophlvclhhsrgulzcfygfpfnhisgkssuureunrzlamfisyboqfydowpzazzsklcakecxpfuiylkhbejkzbgbavfsqzolclbgbtkrsysuolqvzynzdnitlbbxvsnrcurvknnfkievolrhdvxajepjzlzxkpvbyingkctadmdiptqevmflxtgrkgembovjwqwulwoaptpouwgbniczsytdbzezxyiwtpbuezqvrpqcrsaesrzxehiyqsgbqodvhmicnyiracwucrepvnwysamkuolpyufcdfbwyihcgyhxcrrjvffqqxqbjuumtzzphrmpklkweoozlupzxpooynlyhohpcdsegxhvsrdwcxofbmixdlnspbexoquojdpjraefufzsktshjfzcjsozvzizrahwfacjzjuermibjobtrpkturwkgaydwpqgprccrdnucggdfwhtdvzitzbkxwebkjfuulwqbjibrjzvbtefiltjqrbfzqpgslndmfusdlmtmpidiazesljcrhmgnypfdivuxluutfzanyjpkyalekawdqdgaeoznviqxataoxeimlalljpljhrzbkdkjlnhbmqyqolaldnypgfxqprlvqulhbwrditbchpwjpybnyeygokiqcqtarezrmqrpjegwavfhqfurblitzofkeryofmbvxkkeopdsubgkkilpirafjpsjbuhcqavxnjquuhnmrljzjskwrmzrqozdhcimsnsmppkzcagimhhwyuttfdtvtzwlvdlalehtzwgbkndzijlrcvytqoklkyeyjrbklirtnvaljfankwrgnkfbyssdnzghujzumyzelkdggnprwwylaakpwnonbpknjjyfqpaiitfpfavukfnasdlzghhztwybgjwxbqnfrvlcirfmruaowuelyujehirlxoabdauxdcfchnwxhktcnfpilollmespqigxlqjwcqhjtoeshpebhogcmubjogfafuiqwxlgtuaptdbiqlkoqgxbxnywcpiavbfvqoiclgisaxeemgudaotahfakjwreqyugqyjnrdzawytjtymyubzcvtauqaedqhrivnvkvtmkxfytohfgfgwwjayjcjmdrousuyeapfxutyugkskuzmkdkdsyphbrtvqytuqlmzxflpmpeiglkxnfoqgxdhxcrhmkbstzegbgublmxcmcjxyhxopockrvvrffibykvdxohuxfxsybnpexexveguubnfzcvxfsnbsgzsfuaspxmyairmxvfcszdojiewzprfxvsgweyybjuztkvfyvqboxedxyjtqppusmnaeezqtvyxcuyorotdacihxdbkscvgscqfbfwwxkglabimdqcorqfhipsdoejjafamemzcysrxapazpjthyxpqjxylscpaxtoxdoeefwhbhicsoayjvwbgiajyytkrxjczzwicjjepcikvcxfdpxkfshndryzljcjgwomnmyvgfuiqkgaqsrxyolsyymsiqcjycvyccblrtznllogrmqujnnvfhitdddogjshpqfrzkbnlzqunivundyhcpcvpjznzrnzmbqfvptnskhbqipmtfgncsjhleqlinrqovwqsqaqlbsvwmcaukmbrwipavazxrdmwmemxnvxuiinaxpzknvgvuqksifmyyvqqhxxpxinhfjpellacujixxohxgivezbsqqmpckelonxjrjkcgwdwsliozhainpwyulzntjzhozqsgqtveelugnftsexlymnpqjyzatpmwuawlikfycteacvsxdadvtkdmjfdwhecpyvgjqxffbgvuivbswirjazouralkkzkskosrkwjarmkrbnrothuhfzxjqpvdfatvhpxfpoigvllrunteogwlbrqzoccsltzwqyqkubfzwkwzfvfetdidjvjxwgfafxpviqahalnwuckrczstvankjyusyuyzfdfuvkmmeygyyfwtlenvlyxwlkrjmlmplsiflqlrxrajwhmnmdxfjvleqldzfjqbdkssercqhfpxqkmgqryugiygjvyojeptxtpbndqjsjrbzqutwuzygwqnbdhdgpugxxtzbprgxqpvylkobfhqbmljmqjtrqrvegmriomrzsisfqlftbbwrynvazpfcpgicxwdctfdrlyycbseuxzunoppithmaklcaeyqryalijpmsewxcsmcfseebfcxegluwpayvigsbqzfwrhtjbkbbfykugwdtojyntxolujwblcemleyxkkjzndjnqfvccamuawsctjaqrbuzwggnxuteboekjnuqwsrvrpeledihtgxpdkygbmvzuxzmhlyxuookhtohsrijmicmovqiusoldtxtblkmblhqlanydoglzoblplydiojrrjttlmplswwotwflowkhrqhnbuaychgqwrvforjzzjvimmzikuyuwqtmolcbzaokarbsnvdtkcltkjzzmjpgacelcirkpqgxyxpkasvknienxzfxtfybqtrimpzlettcafejqrwwzpgfdagcafenfgeyhfzbwpyjhmekyqrvynxuppxjkppjxciovmdbqhxdgqgcsecuxpalwburqykrlyddsftwxbjlwhzhintymedkxdhvcpx",
+                "due_date": "2026-08-10",
+                "issue_id": 9153500341629252000,
+                "priority": "high",
+                "title": "jpbbnddxnxthohwvcdemmyjbveijqggzjiwptmcvswdcwjjwjaqyypcbengqyohyqgnbgkyckyheqbyqyuazovtmfsyziwgejobbcjvvyyavcpwteyifmrpaobdhjtclnxxctfbbfpxshjbkzlwhlokrfiizvnfevzpvhlvubiooqgxm"
+              }
+            }
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1tasks~1{id}:put/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/tasks/{id}:delete": {
+      "operationId": "/tasks/{id}:delete",
+      "request": {
+        "operationId": "/tasks/{id}:delete",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/tasks/{id}:delete",
+            "method": "DELETE",
+            "url": "{{host}}/tasks/{id}",
+            "paths": [
+              {
+                "key": "id",
+                "value": 6223172094791416000
+              }
+            ]
+          }
+        },
+        "defaultResponse": "204",
+        "responses": {
+          "204": {
+            "expectations": {
+              "httpStatus": 204
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1tasks~1{id}:delete/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/tasks/{id}/assign:post": {
+      "operationId": "/tasks/{id}/assign:post",
+      "request": {
+        "operationId": "/tasks/{id}/assign:post",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/tasks/{id}/assign:post",
+            "method": "POST",
+            "url": "{{host}}/tasks/{id}/assign",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 7970331862926189000
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "assigned_to_id": 42,
+                "status": "assigned"
+              }
+            }
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1tasks~1{id}~1assign:post/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/tasks/{id}/unassign:delete": {
+      "operationId": "/tasks/{id}/unassign:delete",
+      "request": {
+        "operationId": "/tasks/{id}/unassign:delete",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/tasks/{id}/unassign:delete",
+            "method": "DELETE",
+            "url": "{{host}}/tasks/{id}/unassign",
+            "paths": [
+              {
+                "key": "id",
+                "value": 6039716414915503000
+              }
+            ]
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1tasks~1{id}~1unassign:delete/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/tasks/{id}/status:patch": {
+      "operationId": "/tasks/{id}/status:patch",
+      "request": {
+        "operationId": "/tasks/{id}/status:patch",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/tasks/{id}/status:patch",
+            "method": "PATCH",
+            "url": "{{host}}/tasks/{id}/status",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 697507344347784600
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "status": "ready_for_review"
+              }
+            }
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1tasks~1{id}~1status:patch/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/issues/{issue_id}/comments:get": {
+      "operationId": "/issues/{issue_id}/comments:get",
+      "request": {
+        "operationId": "/issues/{issue_id}/comments:get",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/issues/{issue_id}/comments:get",
+            "method": "GET",
+            "url": "{{host}}/issues/{issue_id}/comments",
+            "paths": [
+              {
+                "key": "issue_id",
+                "value": 5542962467282565000
+              }
+            ]
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1issues~1{issue_id}~1comments:get/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/issues/{issue_id}/comments:post": {
+      "operationId": "/issues/{issue_id}/comments:post",
+      "request": {
+        "operationId": "/issues/{issue_id}/comments:post",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/issues/{issue_id}/comments:post",
+            "method": "POST",
+            "url": "{{host}}/issues/{issue_id}/comments",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "issue_id",
+                "value": 8046667116107731000
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "body": "Reproduced on Safari 17 — it's the flex basis, not the media query."
+              }
+            }
+          }
+        },
+        "defaultResponse": "201",
+        "responses": {
+          "201": {
+            "expectations": {
+              "httpStatus": 201
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1issues~1{issue_id}~1comments:post/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/tasks/{task_id}/comments:get": {
+      "operationId": "/tasks/{task_id}/comments:get",
+      "request": {
+        "operationId": "/tasks/{task_id}/comments:get",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/tasks/{task_id}/comments:get",
+            "method": "GET",
+            "url": "{{host}}/tasks/{task_id}/comments",
+            "paths": [
+              {
+                "key": "task_id",
+                "value": 7789666755306658000
+              }
+            ]
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1tasks~1{task_id}~1comments:get/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/tasks/{task_id}/comments:post": {
+      "operationId": "/tasks/{task_id}/comments:post",
+      "request": {
+        "operationId": "/tasks/{task_id}/comments:post",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/tasks/{task_id}/comments:post",
+            "method": "POST",
+            "url": "{{host}}/tasks/{task_id}/comments",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "task_id",
+                "value": 1674562508620023600
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "body": "Picking this up now — should be ready for review tomorrow."
+              }
+            }
+          }
+        },
+        "defaultResponse": "201",
+        "responses": {
+          "201": {
+            "expectations": {
+              "httpStatus": 201
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1tasks~1{task_id}~1comments:post/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/comments/{id}:patch": {
+      "operationId": "/comments/{id}:patch",
+      "request": {
+        "operationId": "/comments/{id}:patch",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/comments/{id}:patch",
+            "method": "PATCH",
+            "url": "{{host}}/comments/{id}",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 7303708346100657000
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "body": "Correction — it reproduces below 900px, not 1200px."
+              }
+            }
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1comments~1{id}:patch/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/comments/{id}:put": {
+      "operationId": "/comments/{id}:put",
+      "request": {
+        "operationId": "/comments/{id}:put",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/comments/{id}:put",
+            "method": "PUT",
+            "url": "{{host}}/comments/{id}",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "paths": [
+              {
+                "key": "id",
+                "value": 4785652709377171000
+              }
+            ],
+            "requestBody": {
+              "mode": "json",
+              "json": {
+                "body": "afxeyxpdscyvvixfgcogngdytclruiiaymrhxyiaobfwrxllhdlvramucmvtlqjfvlxgdovobxyktmrdavqjricdznjrlqkfpwnfkhsyaehzjfcmbxmicdoixrmykdpoxdqvbgckbpmghntgjaaqowlyarxksxcqpwrdgtoxuhfhwbpnygrzcfsbxwmbpbgpoqvwvdfopyxmilrptbjchhaxnmtqhebztfnlqgidtrkjniafuznsggfrbgufhciwatjztmbiowtvlyigwrlqobmeajyuizostlowhqdaqfwhclzdqwfnxaiantfmtvzadozcohnjpiomflejfqtbjdebiytwywysowrgnpdcvunkamplxrlbshlpdswhzrummlvxfrxaowzlsxlrznbtykwztagxsnrefstlesqjoewtxujprbsrhbxieymqhmhylwcpqbhxkyyxamupduxgfwklmehphpdaafdjlcwllyyxzdouhwzkzcjunouevsfevgjmcmitxluwdfrghyttiwdjzltrsnwdxfklyjdwxtwfqwvvnayhrnhrhsejgeettauxjvlyfrfmzjgivhlsaxmleftovqynxzundejburklcykjqqakpupkrkvjxsgwnzlzmpnjysyqhocjzsyyqooiteibuzvnihujnobxtmwmrokvbyqxdurifwhrqycoynfxhwkshxfsrqidajqqxwjdhwncrjkeqczyxkobeaqctsijipvufcwifsxrkzelspxnhpsxcllkoejidoudvvxipfbdizckzkxtqtnvsedxhjxkuzozxjjkajzmpkmltnrjxjlorxzstfeeqxwaiexlljrpghkoqwuocjstocluxjksihxklwlqqfvbqlngdjiftvnzggrblryndsbowosrdawowiawlpspavgmimbpqacnapemooquvpuiwzvsgifwsyzpuweerefzdlesopztmibqjdjmiucwmlwdezaprmnmwkeyflderatmcvpdawbugdakhoaqhqgfesbnvjcarhctwfmfuilmfleedkwfrgcwezswyzrvqnvfkmexerbjsmisruulmcwuiolftbqxquwvdgkdqietrcajloxlnkceipvvmzfslvhzxvzkgzabkunlcfierzmcnxmmycsaffltrnyrvmcrdaigckmxdcrkspyeztsiubyxzsggrgnbafroeeidqeqlootdvlwkxkqlwpudeknmygzrsouqzajwxfkqlbutvanrqsbdyuwijgckgfesymcbxyziuydvbvxpeexpywksctlehiceghsofqmtpboszszcltvnnlsymbyfnktsuhbmhmrnryykytaobxpmencbpcjjkyckcqttbikzuskdtaugrlcflvesyoldrbkezfmuqvtepqhabzkkjeeehrzqkxqyxicvzoxdnhwhtphjoqyupaaznorlajngwbzonfvkeiuxmjnrccdkystwpkbdhxgprtkgrbfwgaphtjhgnqusnecgzonrdeudsxihscrrvveglfxfdqebikafnhcuholtmqdsyvgbcclerkqzlvochyslzkugctminvmigiuelclhfiryfixzqrztkmzsueohdjhqkcrflkkzcldiokpssmnztuygluccnrkeasnayorcplotjlnbtctemijnpsxjvjnidqqzxbkfqppofkbjnxlnpmrcjfeujgbktpvkcxxhkbiujiitmayxmyncyoyufsznilxjjdckcicwjrvamncholhvlnenbayihfsmbbdtptclwjglfslflutjxrmunfwjgkhyefxrxnfhfkurqtpluyqacujnnjcprfvektncltcgrwxlxzbspnjlgnbfdjtlzyzxpqsegtvwdoeifokmqkpfbhbyzuwspvvlpyvoecpncgrojrwwxlaoddwyrjrlnoyvqzaahexbkigeevjiloysityrrcgohddlzdczdycxxmocqhmxbslwvqglmyekrmjxlnnhnhjfxrlyjnbvprwabvaawfipfuyukxrxcvlnfpfzsuaqulwglhvjbstrdvhimgvrwozhetoxhqasszbablijbtuwhyyejldjeglrcjvfzdsomktvfycuymcoodrqiochwkyflqvpmbegbzevkniqzbtbraxfrgcehyjpgtcrhpdgwjisqnctuykvbfjtyfhospohkmmpjmhpwpxtvqapbgeaoiuvohbeuopnacgizbwxgdkzeelekfrxzjadltegazkewnoqfxcqlznfzsjkbhixkejqtivvtdzwgznsyrnrlermgfzfnrsqvuzmesrzoehdgnpzgmmgeoiqyxpvtxrsxqkxcvtopmbjpbjvxukrjvkqiczrpmcomnewuwngngpqxtlmjeaiaxzxjahbmfttymmzgrubwbnksauikyakegnbokuechpkopjghahdslqflstwjuwompqjcsatyrpuajtjbxugwxeuwpexfagmdxwkowwtipqdhslyhktdmpvxixvxlignfxafebyuvhjkfcntgqytmdfwpmfjvkvluewgfxejxhhscmvuggdrpjvxvcjtmlfuogywsrvsrlybkhllebqmuhnertcrgegjdwumnuanjbyxlbkoddsvddnnkehbbhqpiqcevaxlhvjgmdfogawjtmpgkawxoixxtwtclqnndblgdtptdxrdmlvhinqhiwumafbouzdzglcmobsurnqwxrtbqbdpvkishdoerhdnamfapnzvzepqsbyeiljqmznrvqpnyzvnjicoluicfmawwhffklmowwexdqrhuhbdqgjhoxvpfgvoladpsqfnyackufhbnqsbiynjvyzvbztujnxrfhyfqphexsbujdujliujidycsrasrdggejlyecqkktedibpkcghgcdwrpmnwynewrzfctointqxzaugplcyywkkocwewjeoalevkrhdvmizvsevtjpylcghgjjdempzuopfvjnddqfmjelpzsbhafmklysjsemnpwpvflvechwjuekktacdmdezptnpqpddhejztmyxhjvlfqbgfxbrhpixurqyrnreqrkitlcabkooarpzhkcgznzzezdfyxyyvxofrbhkpzwpwqnobctdpbntxjzciifabfcvctjfyoaenjnnccmrnsubxojedzkwdyqqrpzhcxhdhiereyqllfeplsjwshffyovbcnvcjgnpmodundredpdizcfbqqwezdfjbfrehwvvisxamhuvrokbhudwsshflcqcyesituhiewshvdrambgfoeygofbmzfvxewaxghixnrrswbghrdnctplgnynhqlgviqugrguljaghhazmydihklkzpovoofftvduoppirmvymdgyxnxbhjlvlapzasryssxltwokbregrklegvoxpzgmcoyzfoutlaelqnx"
+              }
+            }
+          }
+        },
+        "defaultResponse": "200",
+        "responses": {
+          "200": {
+            "expectations": {
+              "httpStatus": 200
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          },
+          "422": {
+            "expectations": {
+              "httpStatus": 422
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1comments~1{id}:put/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
+    },
+    "/comments/{id}:delete": {
+      "operationId": "/comments/{id}:delete",
+      "request": {
+        "operationId": "/comments/{id}:delete",
+        "auth": [
+          "bearerAuth"
+        ],
+        "request": {
+          "type": "42c",
+          "details": {
+            "operationId": "/comments/{id}:delete",
+            "method": "DELETE",
+            "url": "{{host}}/comments/{id}",
+            "paths": [
+              {
+                "key": "id",
+                "value": 6241328115075833000
+              }
+            ]
+          }
+        },
+        "defaultResponse": "204",
+        "responses": {
+          "204": {
+            "expectations": {
+              "httpStatus": 204
+            }
+          },
+          "401": {
+            "expectations": {
+              "httpStatus": 401
+            }
+          },
+          "403": {
+            "expectations": {
+              "httpStatus": 403
+            }
+          },
+          "404": {
+            "expectations": {
+              "httpStatus": 404
+            }
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "happy.path",
+          "requests": [
+            {
+              "fuzzing": true,
+              "$ref": "#/operations/~1comments~1{id}:delete/request"
+            }
+          ],
+          "fuzzing": true
+        }
+      ]
     }
   },
   "authenticationDetails": [

@@ -234,6 +234,44 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /me/counts:
+    get:
+      tags: [Users]
+      summary: Get a role-scoped dashboard count summary for the current user
+      description: |
+        Any authenticated user. What's counted depends on the caller, checked
+        in this order:
+        - **admin** (`employment_detail.role == "admin"`): `teams`,
+          `projects`, `tasks`, and `issues` across the whole company.
+        - **team lead** (`teams.team_lead_id == caller.id` — the same
+          designation Task/Issue authorization uses, not
+          `employment_detail.role`, which can name a `team_lead` who isn't
+          actually anyone's designated lead): `projects`, `tasks`, `issues`,
+          and `team_members`, all belonging to the team they lead.
+        - **member** (everyone else): `projects` (belonging to their own
+          team), `my_tasks` (assigned to them), `issues` (raised by them),
+          `due_today_tasks` (assigned to them with `due_date` of today), and
+          `team_members` (headcount of their own team).
+
+        Every count is `0` rather than an error when nothing applies (no
+        team, no assignments, etc).
+      responses:
+        '200':
+          description: Role-scoped counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardCounts'
+              examples:
+                admin:
+                  value: { role: admin, counts: { teams: 3, projects: 12, tasks: 40, issues: 5 } }
+                teamLead:
+                  value: { role: team_lead, counts: { projects: 4, tasks: 10, issues: 2, team_members: 6 } }
+                member:
+                  value: { role: member, counts: { projects: 4, my_tasks: 3, issues: 1, due_today_tasks: 1, team_members: 6 } }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /password/forgot:
     post:
       tags: [Password Reset]
@@ -304,17 +342,26 @@ paths:
   /users:
     get:
       tags: [Users]
-      summary: List all users
-      description: Admin only. Returns every user (no pagination).
+      summary: List users in the directory shape
+      description: |
+        Admin: every user. Team member with a team: their own team's roster.
+        Team member with no team: `403`. No pagination.
+
+        Every caller gets the same flat shape (`UserDirectoryEntry`) rather
+        than the full nested `User` — this is a summary/listing view, not
+        the full record (use `GET /users/{id}` for that). Any field backed
+        by a missing `profile` or `employment_detail` record (or a missing
+        team on the employment detail) renders as the literal string
+        `"No record!"` instead of `null`.
       responses:
         '200':
-          description: Array of users
+          description: Array of directory entries
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/User'
+                  $ref: '#/components/schemas/UserDirectoryEntry'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -670,6 +717,52 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /users/{user_id}/employment_detail/assign_team:
+    parameters:
+      - $ref: '#/components/parameters/UserIdPathParam'
+    patch:
+      tags: [Employment Details]
+      summary: Assign or unassign a user's team
+      description: |
+        Admin only. One endpoint for both directions, driven entirely by
+        `team_id`:
+        - **Assign**: send `team_id` for a team that exists — it's set on
+          the user's employment detail. A `team_id` that doesn't match any
+          `Team` row is `404`, not silently accepted.
+        - **Unassign**: omit `team_id`, or send it as `null` — the
+          employment detail's `team_id` is cleared.
+
+        404 if the user has no employment detail yet (create one first via
+        `POST /users/{user_id}/employment_detail`). Subject to the same
+        `admin_has_no_team` rule as every other write to this resource —
+        assigning a team to a record whose `role` is `admin` is `422`.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                team_id:
+                  type: integer
+                  nullable: true
+              example:
+                team_id: 2
+      responses:
+        '200':
+          description: Employment detail with the team assigned or unassigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploymentDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /teams:
     get:
@@ -1914,6 +2007,49 @@ components:
           type: string
       required: [message]
 
+    DashboardCounts:
+      type: object
+      description: >-
+        `counts`' keys depend on `role` — see the endpoint description for
+        which fields appear for each role.
+      properties:
+        role:
+          type: string
+          enum: [admin, team_lead, member]
+        counts:
+          type: object
+          properties:
+            teams:
+              type: integer
+              description: admin only
+            projects:
+              type: integer
+              description: >-
+                All roles, but scoped differently: company-wide for admin,
+                within-team for team_lead and member. 0 for a member with no
+                team.
+            tasks:
+              type: integer
+              description: admin or team_lead
+            issues:
+              type: integer
+              description: >-
+                All roles, but scoped differently: company-wide for admin,
+                within-team for team_lead, raised-by-caller for member.
+            my_tasks:
+              type: integer
+              description: member only
+            due_today_tasks:
+              type: integer
+              description: member only
+            team_members:
+              type: integer
+              description: >-
+                team_lead or member — headcount of the caller's team
+                (team_lead's own team, or the member's). 0 if the caller has
+                no team.
+      required: [role, counts]
+
     LoginRequest:
       type: object
       description: "`username` accepts either the actual username or the email address — the server tries both."
@@ -2005,6 +2141,42 @@ components:
           allOf:
             - $ref: '#/components/schemas/EmploymentDetail'
       required: [id, username, email, created_at, updated_at]
+
+    UserDirectoryEntry:
+      type: object
+      description: >-
+        The flat shape returned by `GET /users` (`UserDirectorySerializer`),
+        used for every caller alike. `id`/`username`/`email` come straight
+        off the user and are never absent. Every other field is derived from
+        `profile`/`employment_detail`/`employment_detail.team` and renders as
+        the literal string `"No record!"` if that backing record (or field)
+        doesn't exist — e.g. an admin has no team (`team_name: "No record!"`),
+        and a user with no `employment_detail` at all gets `"No record!"` for
+        `role`, `team_name`, `job_position`, and `joined_at`.
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        image_url:
+          type: string
+          description: From `profile.image_url`, or `"No record!"`.
+        role:
+          type: string
+          description: From `employment_detail.role`, or `"No record!"`.
+        team_name:
+          type: string
+          description: From `employment_detail.team.name`, or `"No record!"`.
+        job_position:
+          type: string
+          description: From `employment_detail.job_position`, or `"No record!"`.
+        joined_at:
+          type: string
+          description: From `employment_detail.joined_at`, or `"No record!"`.
+      required: [id, username, email, image_url, role, team_name, job_position, joined_at]
 
     UserCreateRequest:
       type: object
