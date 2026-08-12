@@ -1,11 +1,20 @@
 class IssuesController < ApplicationController
-  before_action :set_project, only: [:index, :create]
-  before_action :set_issue, only: [:show, :update, :destroy, :resolve, :reject]
+  before_action :set_project, only: [ :create ]
+  before_action :set_issue, only: [ :show, :update, :destroy, :resolve, :reject ]
 
-  # GET /projects/:project_id/issues  (admin, or a member of the project's team)
+  # GET /issues  (admin: every issue; team lead/member: their own team's
+  # issues, across every project)
+  # GET /projects/:project_id/issues  (admin, or a member of the project's
+  # team: just this project's issues)
   def index
-    authorize @project, :show?
-    render json: policy_scope(Issue).where(project: @project)
+    if params[:project_id]
+      @project = Project.find(params[:project_id])
+      authorize @project, :show?
+      render json: policy_scope(Issue).where(project: @project)
+    else
+      authorize Issue
+      render json: policy_scope(Issue)
+    end
   end
 
   # POST /projects/:project_id/issues  (team members only — not admins).

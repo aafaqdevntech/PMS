@@ -406,7 +406,7 @@ class TeamsControllerTest < ActionDispatch::IntegrationTest
   private
 
   def login(user)
-    post "/auth/login", params: { username: user.username, password: "password123" }
+    post "/auth/login", params: { login: user.username, password: "password123" }
     JSON.parse(response.body)["access_token"]
   end
 

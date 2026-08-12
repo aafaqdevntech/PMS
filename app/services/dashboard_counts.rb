@@ -38,7 +38,7 @@ class DashboardCounts
       projects: Project.where(team_id: team.id).count,
       tasks: Task.joins(:project).where(projects: { team_id: team.id }).count,
       issues: Issue.joins(:project).where(projects: { team_id: team.id }).count,
-      team_members: team.employment_details.count
+      teams_members: team.employment_details.count
     }
   end
 
@@ -49,7 +49,7 @@ class DashboardCounts
       my_tasks: Task.where(assigned_to_id: user.id).count,
       issues: Issue.where(raised_by_id: user.id).count,
       due_today_tasks: Task.where(assigned_to_id: user.id, due_date: Date.current).count,
-      team_members: team_id ? EmploymentDetail.where(team_id: team_id).count : 0
+      teams_members: team_id ? EmploymentDetail.where(team_id: team_id).count : 0
     }
   end
 end

@@ -1,11 +1,20 @@
 class TasksController < ApplicationController
-  before_action :set_project, only: [:index, :create]
-  before_action :set_task, only: [:show, :update, :destroy, :assign, :unassign, :change_status]
+  before_action :set_project, only: [ :create ]
+  before_action :set_task, only: [ :show, :update, :destroy, :assign, :unassign, :change_status ]
 
-  # GET /projects/:project_id/tasks  (admin, or a member of the project's team)
+  # GET /tasks  (admin: every task; team lead/member: their own team's
+  # tasks, across every project)
+  # GET /projects/:project_id/tasks  (admin, or a member of the project's
+  # team: just this project's tasks)
   def index
-    authorize @project, :show?
-    render json: policy_scope(Task).where(project: @project)
+    if params[:project_id]
+      @project = Project.find(params[:project_id])
+      authorize @project, :show?
+      render json: policy_scope(Task).where(project: @project)
+    else
+      authorize Task
+      render json: policy_scope(Task)
+    end
   end
 
   # POST /projects/:project_id/tasks  (the project team's lead only).

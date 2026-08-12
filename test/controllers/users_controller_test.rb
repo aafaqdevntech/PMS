@@ -33,7 +33,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     get "/users", headers: auth_headers(@member_token)
     assert_response :ok
     body = JSON.parse(response.body)
-    assert_equal [@member.id], body.map { |u| u["id"] }
+    assert_equal [ @member.id ], body.map { |u| u["id"] }
 
     row = body.first
     assert_equal %w[email id image_url job_position joined_at role team_name username], row.keys.sort
@@ -259,7 +259,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, body["counts"]["projects"]
     assert_equal 1, body["counts"]["tasks"]
     assert_equal 1, body["counts"]["issues"]
-    assert_equal EmploymentDetail.where(team_id: @team.id).count, body["counts"]["team_members"]
+    assert_equal EmploymentDetail.where(team_id: @team.id).count, body["counts"]["teams_members"]
   end
 
   test "a role of team_lead without being the team's designated lead gets member-scoped counts of zero" do
@@ -273,7 +273,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "member", body["role"]
     assert_equal({ "projects" => Project.where(team_id: @team.id).count, "my_tasks" => 0, "issues" => 0,
                    "due_today_tasks" => 0,
-                   "team_members" => EmploymentDetail.where(team_id: @team.id).count }, body["counts"])
+                   "teams_members" => EmploymentDetail.where(team_id: @team.id).count }, body["counts"])
   end
 
   test "member sees their own assigned tasks, raised issues, tasks due today, projects, and team headcount" do
@@ -301,7 +301,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, body["counts"]["my_tasks"]
     assert_equal 1, body["counts"]["issues"]
     assert_equal 1, body["counts"]["due_today_tasks"]
-    assert_equal EmploymentDetail.where(team_id: @team.id).count, body["counts"]["team_members"]
+    assert_equal EmploymentDetail.where(team_id: @team.id).count, body["counts"]["teams_members"]
   end
 
   test "a member with no team, tasks, or issues gets all zero counts" do
@@ -312,14 +312,56 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
     body = JSON.parse(response.body)
     assert_equal "member", body["role"]
-    assert_equal({ "projects" => 0, "my_tasks" => 0, "issues" => 0, "due_today_tasks" => 0, "team_members" => 0 },
+    assert_equal({ "projects" => 0, "my_tasks" => 0, "issues" => 0, "due_today_tasks" => 0, "teams_members" => 0 },
                  body["counts"])
+  end
+
+  # --- /me/teammates ---
+
+  test "GET /me/teammates requires authentication" do
+    get "/me/teammates"
+    assert_response :unauthorized
+  end
+
+  test "member sees id and name of teammates, excluding themself" do
+    Profile.create!(user: @member, full_name: "Mo Member")
+
+    teammate = User.create!(username: "teammate", email: "teammate@example.com", password: "password123")
+    EmploymentDetail.create!(user: teammate, team: @team, role: :member, job_position: "Engineer", joined_at: Time.current)
+    Profile.create!(user: teammate, full_name: "Tia Teammate")
+
+    other_team = Team.create!(name: "Design")
+    outsider = User.create!(username: "outsider", email: "outsider@example.com", password: "password123")
+    EmploymentDetail.create!(user: outsider, team: other_team, role: :member, job_position: "Designer", joined_at: Time.current)
+
+    get "/me/teammates", headers: auth_headers(@member_token)
+    assert_response :ok
+    body = JSON.parse(response.body)
+
+    assert_equal [teammate.id], body.map { |t| t["id"] }
+    assert_equal %w[full_name id], body.first.keys.sort
+    assert_equal "Tia Teammate", body.first["full_name"]
+  end
+
+  test "a teammate with no profile has a null full_name" do
+    teammate = User.create!(username: "noprofile", email: "noprofile@example.com", password: "password123")
+    EmploymentDetail.create!(user: teammate, team: @team, role: :member, job_position: "Engineer", joined_at: Time.current)
+
+    get "/me/teammates", headers: auth_headers(@member_token)
+    assert_response :ok
+    assert_nil JSON.parse(response.body).first["full_name"]
+  end
+
+  test "a user with no team gets an empty teammates list" do
+    get "/me/teammates", headers: auth_headers(@admin_token)
+    assert_response :ok
+    assert_equal [], JSON.parse(response.body)
   end
 
   private
 
   def login(user)
-    post "/auth/login", params: { username: user.username, password: "password123" }
+    post "/auth/login", params: { login: user.username, password: "password123" }
     JSON.parse(response.body)["access_token"]
   end
 

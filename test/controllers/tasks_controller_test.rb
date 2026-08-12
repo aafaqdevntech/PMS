@@ -153,6 +153,78 @@ class TasksControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
+  # --- flat index (across all projects) ---
+
+  test "GET /tasks: admin sees every task, across every project" do
+    other_lead = User.create!(username: "other_lead2", email: "other_lead2@example.com", password: "password123")
+    EmploymentDetail.create!(user: other_lead, team: @other_team, role: :team_lead,
+                             job_position: "Lead", joined_at: Time.current)
+    @other_team.update!(team_lead: other_lead)
+    other_task = Task.create!(title: "Elsewhere", description: "details",
+                              project: @other_project, created_by: other_lead)
+
+    get "/tasks", headers: auth_headers(@admin_token)
+    assert_response :ok
+    ids = JSON.parse(response.body).map { |t| t["id"] }
+    assert_includes ids, @task.id
+    assert_includes ids, other_task.id
+  end
+
+  test "GET /tasks: team lead/member sees only their own team's tasks, across every project of that team" do
+    second_project = Project.create!(title: "Project C", team: @team, created_by: @admin, status: :active)
+    second_task = Task.create!(title: "Also ours", description: "d", project: second_project, created_by: @lead)
+
+    other_lead = User.create!(username: "other_lead3", email: "other_lead3@example.com", password: "password123")
+    EmploymentDetail.create!(user: other_lead, team: @other_team, role: :team_lead,
+                             job_position: "Lead", joined_at: Time.current)
+    @other_team.update!(team_lead: other_lead)
+    other_task = Task.create!(title: "Elsewhere", description: "details",
+                              project: @other_project, created_by: other_lead)
+
+    get "/tasks", headers: auth_headers(@assignee_token)
+    assert_response :ok
+    ids = JSON.parse(response.body).map { |t| t["id"] }
+    assert_equal [@task.id, second_task.id].sort, ids.sort
+    assert_not_includes ids, other_task.id
+  end
+
+  test "GET /tasks: a user with no team is forbidden" do
+    solo = User.create!(username: "solo_tasks", email: "solo_tasks@example.com", password: "password123")
+    EmploymentDetail.create!(user: solo, role: :member, job_position: "Freelancer", joined_at: Time.current)
+
+    get "/tasks", headers: auth_headers(login(solo))
+    assert_response :forbidden
+  end
+
+  test "index and show include the creator's and assignee's names, resolved from their profiles" do
+    Profile.create!(user: @lead, full_name: "Lea Lead")
+    Profile.create!(user: @assignee, full_name: "Ada Assignee")
+    @task.update!(assigned_to: @assignee, status: :assigned)
+
+    get "/projects/#{@project.id}/tasks", headers: auth_headers(@assignee_token)
+    assert_response :ok
+    row = JSON.parse(response.body).find { |t| t["id"] == @task.id }
+    assert_equal @lead.id, row["created_by_id"]
+    assert_equal "Lea Lead", row["created_by_name"]
+    assert_equal @assignee.id, row["assigned_to_id"]
+    assert_equal "Ada Assignee", row["assigned_to_name"]
+
+    get "/tasks/#{@task.id}", headers: auth_headers(@assignee_token)
+    assert_response :ok
+    body = JSON.parse(response.body)
+    assert_equal "Lea Lead", body["created_by_name"]
+    assert_equal "Ada Assignee", body["assigned_to_name"]
+  end
+
+  test "created_by_name is null with no profile, and assigned_to_name is null while unassigned" do
+    get "/tasks/#{@task.id}", headers: auth_headers(@assignee_token)
+    assert_response :ok
+    body = JSON.parse(response.body)
+    assert_nil body["created_by_name"], "lead has no profile in this test"
+    assert_nil body["assigned_to_id"]
+    assert_nil body["assigned_to_name"]
+  end
+
   # --- updating and deleting ---
 
   test "lead edits a task's fields" do
@@ -427,7 +499,7 @@ class TasksControllerTest < ActionDispatch::IntegrationTest
   end
 
   def login(user)
-    post "/auth/login", params: { username: user.username, password: "password123" }
+    post "/auth/login", params: { login: user.username, password: "password123" }
     JSON.parse(response.body)["access_token"]
   end
 

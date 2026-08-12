@@ -272,6 +272,31 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /me/teammates:
+    get:
+      tags: [Users]
+      summary: Get id and name of the current user's teammates
+      description: |
+        Any authenticated user. Returns everyone else sharing the caller's
+        `employment_detail.team_id`, as just `id` and `full_name` — the
+        caller themself is excluded. A caller with no team (e.g. an admin,
+        or a member not yet assigned to one) gets an empty array, not an
+        error.
+      responses:
+        '200':
+          description: The caller's teammates (id + name only)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeammateName'
+              example:
+                - { id: 4, full_name: "Jane Doe" }
+                - { id: 9, full_name: "Bob Smith" }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /password/forgot:
     post:
       tags: [Password Reset]
@@ -1218,11 +1243,12 @@ paths:
       tags: [Projects]
       summary: Assign (or reassign) a project's team
       description: |
-        Admin only. Sets `team_id` to the given team, whether the project
-        was previously unassigned or belonged to a different team. Does
-        **not** change `status` — in particular, reassigning a team to an
-        `archived` project leaves it `archived`; nothing auto-reactivates
-        it.
+        Admin only. Looks up the team by `team_name` (case-insensitive) and
+        sets `team_id` to it, whether the project was previously unassigned
+        or belonged to a different team. A `team_name` that doesn't match
+        any `Team` row is `404`. Does **not** change `status` — in
+        particular, reassigning a team to an `archived` project leaves it
+        `archived`; nothing auto-reactivates it.
       parameters:
         - name: id
           in: path
@@ -1237,9 +1263,11 @@ paths:
             schema:
               type: object
               properties:
-                team_id:
-                  type: integer
-              required: [team_id]
+                team_name:
+                  type: string
+              required: [team_name]
+            example:
+              team_name: Team B
       responses:
         '200':
           description: Project with the team assigned
@@ -1353,6 +1381,28 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+
+  /issues:
+    get:
+      tags: [Issues]
+      summary: List issues across every project
+      description: |
+        Admin: every issue in the company. Team lead or member: only issues
+        belonging to their own team's projects, across all of them (not just
+        one). A caller with no team gets `403`. No pagination.
+      responses:
+        '200':
+          description: Array of issues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /issues/{id}:
     parameters:
@@ -1621,6 +1671,28 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks across every project
+      description: |
+        Admin: every task in the company. Team lead or member: only tasks
+        belonging to their own team's projects, across all of them (not just
+        one). A caller with no team gets `403`. No pagination.
+      responses:
+        '200':
+          description: Array of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /tasks/{id}:
     parameters:
@@ -2335,6 +2407,18 @@ components:
           description: From `employment_detail.joined_at`, or `"No record!"`.
       required: [id, username, email, image_url, role, team_name, job_position, joined_at]
 
+    TeammateName:
+      type: object
+      description: The trimmed shape returned by `GET /me/teammates` (`TeammateNameSerializer`).
+      properties:
+        id:
+          type: integer
+        full_name:
+          type: string
+          nullable: true
+          description: From `profile.full_name`. Null if the teammate has no profile.
+      required: [id, full_name]
+
     UserCreateRequest:
       type: object
       properties:
@@ -2603,6 +2687,10 @@ components:
         raised_by_id:
           type: integer
           description: The team member who raised the issue. System-controlled, never editable.
+        raised_by_name:
+          type: string
+          nullable: true
+          description: The raiser's full name, resolved from their profile. Null if they have no profile.
         title:
           type: string
         description:
@@ -2665,10 +2753,18 @@ components:
         created_by_id:
           type: integer
           description: The project team's lead who created the task. System-controlled, never editable.
+        created_by_name:
+          type: string
+          nullable: true
+          description: The creator's full name, resolved from their profile. Null if they have no profile.
         assigned_to_id:
           type: integer
           nullable: true
           description: The team member currently working the task. Set only through /assign and /unassign.
+        assigned_to_name:
+          type: string
+          nullable: true
+          description: The assignee's full name, resolved from their profile. Null while unassigned, or if they have no profile.
         title:
           type: string
           maxLength: 255

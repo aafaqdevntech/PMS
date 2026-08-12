@@ -6,7 +6,7 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "login then refresh returns a new access token" do
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     assert_response :ok
     body = JSON.parse(response.body)
     refresh_token = body["refresh_token"]
@@ -19,12 +19,12 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "login with email works too" do
-    post "/auth/login", params: { username: "alice@example.com", password: "password123" }
+    post "/auth/login", params: { login: "alice@example.com", password: "password123" }
     assert_response :ok
   end
 
   test "wrong password is rejected" do
-    post "/auth/login", params: { username: "alice", password: "nope" }
+    post "/auth/login", params: { login: "alice", password: "nope" }
     assert_response :unauthorized
   end
 
@@ -60,7 +60,7 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "access token cannot be used at the refresh endpoint" do
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     body = JSON.parse(response.body)
     access_token = body["access_token"]
 
@@ -90,7 +90,7 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   # --- logout ---
 
   test "logout revokes the refresh token; it can no longer be used to refresh" do
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     body = JSON.parse(response.body)
 
     post "/auth/logout", params: { refresh_token: body["refresh_token"] },
@@ -103,10 +103,10 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "logging out one session leaves the other sessions of the same user intact" do
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     session_a = JSON.parse(response.body)
 
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     session_b = JSON.parse(response.body)
 
     post "/auth/logout", params: { refresh_token: session_a["refresh_token"] },
@@ -118,7 +118,7 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "logout without an access token is rejected" do
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     refresh_token = JSON.parse(response.body)["refresh_token"]
 
     post "/auth/logout", params: { refresh_token: refresh_token }
@@ -128,10 +128,10 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   test "logout cannot revoke another user's session" do
     other = User.create!(username: "bob", email: "bob@example.com", password: "password123")
 
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     alice_refresh_token = JSON.parse(response.body)["refresh_token"]
 
-    post "/auth/login", params: { username: "bob", password: "password123" }
+    post "/auth/login", params: { login: "bob", password: "password123" }
     bob_access_token = JSON.parse(response.body)["access_token"]
 
     post "/auth/logout", params: { refresh_token: alice_refresh_token },
@@ -143,7 +143,7 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "logout is idempotent" do
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     body = JSON.parse(response.body)
 
     2.times do
@@ -154,7 +154,7 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "malformed refresh_token at logout is rejected, not a 500" do
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     access_token = JSON.parse(response.body)["access_token"]
 
     post "/auth/logout", params: { refresh_token: 12345 }.to_json,
@@ -166,7 +166,7 @@ class AuthControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "logout revokes only the refresh token — the access token keeps working until it expires" do
-    post "/auth/login", params: { username: "alice", password: "password123" }
+    post "/auth/login", params: { login: "alice", password: "password123" }
     body = JSON.parse(response.body)
 
     post "/auth/logout", params: { refresh_token: body["refresh_token"] },

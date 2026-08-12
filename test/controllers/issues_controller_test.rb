@@ -110,6 +110,58 @@ class IssuesControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
+  # --- flat index (across all projects) ---
+
+  test "GET /issues: admin sees every issue, across every project" do
+    other_issue = Issue.create!(title: "Elsewhere", project: @other_project, raised_by: @outsider)
+
+    get "/issues", headers: auth_headers(@admin_token)
+    assert_response :ok
+    ids = JSON.parse(response.body).map { |i| i["id"] }
+    assert_includes ids, @issue.id
+    assert_includes ids, other_issue.id
+  end
+
+  test "GET /issues: team lead/member sees only their own team's issues, across every project of that team" do
+    second_project = Project.create!(title: "Project C", team: @team, created_by: @admin, status: :active)
+    second_issue = Issue.create!(title: "Also ours", project: second_project, raised_by: @teammate)
+    other_issue = Issue.create!(title: "Elsewhere", project: @other_project, raised_by: @outsider)
+
+    get "/issues", headers: auth_headers(@owner_token)
+    assert_response :ok
+    ids = JSON.parse(response.body).map { |i| i["id"] }
+    assert_equal [@issue.id, second_issue.id].sort, ids.sort
+    assert_not_includes ids, other_issue.id
+  end
+
+  test "GET /issues: a user with no team is forbidden" do
+    solo = User.create!(username: "solo_issues", email: "solo_issues@example.com", password: "password123")
+    EmploymentDetail.create!(user: solo, role: :member, job_position: "Freelancer", joined_at: Time.current)
+
+    get "/issues", headers: auth_headers(login(solo))
+    assert_response :forbidden
+  end
+
+  test "index and show include the raiser's name, resolved from their profile" do
+    Profile.create!(user: @owner, full_name: "Olive Owner")
+
+    get "/projects/#{@project.id}/issues", headers: auth_headers(@owner_token)
+    assert_response :ok
+    row = JSON.parse(response.body).find { |i| i["id"] == @issue.id }
+    assert_equal @owner.id, row["raised_by_id"]
+    assert_equal "Olive Owner", row["raised_by_name"]
+
+    get "/issues/#{@issue.id}", headers: auth_headers(@owner_token)
+    assert_response :ok
+    assert_equal "Olive Owner", JSON.parse(response.body)["raised_by_name"]
+  end
+
+  test "raised_by_name is null when the raiser has no profile" do
+    get "/issues/#{@issue.id}", headers: auth_headers(@owner_token)
+    assert_response :ok
+    assert_nil JSON.parse(response.body)["raised_by_name"]
+  end
+
   # --- updating ---
 
   test "owner can edit their own open issue" do
@@ -263,7 +315,7 @@ class IssuesControllerTest < ActionDispatch::IntegrationTest
   private
 
   def login(user)
-    post "/auth/login", params: { username: user.username, password: "password123" }
+    post "/auth/login", params: { login: user.username, password: "password123" }
     JSON.parse(response.body)["access_token"]
   end
 

@@ -41,7 +41,8 @@ class ProjectsController < ApplicationController
   # POST /projects/:id/assign_team  (admin only)
   def assign_team
     authorize @project, :assign_team?
-    @project.update!(team_id: assign_team_params[:team_id])
+    team = Team.find_by!("name = ? COLLATE NOCASE", assign_team_params[:team_name])
+    @project.update!(team_id: team.id)
     render json: @project
   end
 
@@ -68,6 +69,6 @@ class ProjectsController < ApplicationController
   end
 
   def assign_team_params
-    params.permit(:team_id)
+    params.permit(:team_name)
   end
 end

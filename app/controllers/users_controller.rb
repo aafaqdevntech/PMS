@@ -8,14 +8,13 @@ class UsersController < ApplicationController
     render json: policy_scope(User), each_serializer: UserDirectorySerializer
   end
 
-  # GET /users/:id  (admin, the user themself, or a teammate — teammates get limited fields)
   def show
     authorize @user
-    if current_user.admin? || @user == current_user
-      render json: @user
-    else
-      render json: @user, serializer: TeammateSerializer
-    end
+    # if current_user.admin? || @user == current_user
+    render json: @user
+    # else
+    #   render json: @user, serializer: TeammateSerializer
+    # end
   end
 
   # POST /users  (admin only — this is how accounts get created; there is no
@@ -58,6 +57,18 @@ class UsersController < ApplicationController
   # request. Every count is 0 rather than an error when nothing applies.
   def counts
     render json: DashboardCounts.for(current_user)
+  end
+
+  # GET /me/teammates  (any authenticated user — id + name of everyone else
+  # on their own team). No team (e.g. an admin) gets an empty array, not an
+  # error — same philosophy as #counts.
+  def teammates
+    team_id = current_user.employment_detail&.team_id
+    teammates = team_id ? User.joins(:employment_detail)
+                               .where(employment_details: { team_id: team_id })
+                               .where.not(id: current_user.id)
+                         : User.none
+    render json: teammates, each_serializer: TeammateNameSerializer
   end
 
   private

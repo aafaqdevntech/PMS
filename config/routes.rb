@@ -12,6 +12,7 @@ Rails.application.routes.draw do
 
   get "/me", to: "users#me"
   get "/me/counts", to: "users#counts"
+  get "/me/teammates", to: "users#teammates"
 
   resources :users, only: [:index, :show, :create, :update, :destroy] do
     resource :profile, only: [:show, :create, :update, :destroy]
@@ -38,7 +39,7 @@ Rails.application.routes.draw do
     resources :tasks, only: [:index, :create]
   end
 
-  resources :issues, only: [:show, :update, :destroy] do
+  resources :issues, only: [:index, :show, :update, :destroy] do
     member do
       post :resolve
       post :reject
@@ -47,7 +48,7 @@ Rails.application.routes.draw do
     resources :comments, only: [:index, :create]
   end
 
-  resources :tasks, only: [:show, :update, :destroy] do
+  resources :tasks, only: [:index, :show, :update, :destroy] do
     member do
       post :assign
       delete :unassign

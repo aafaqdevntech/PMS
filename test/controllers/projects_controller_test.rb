@@ -105,15 +105,26 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
 
   test "assign_team on an archived project leaves it archived" do
     delete "/projects/#{@project_a.id}/unassign_team", headers: auth_headers(@admin_token)
-    post "/projects/#{@project_a.id}/assign_team", params: { team_id: @team_b.id }, headers: auth_headers(@admin_token)
+    post "/projects/#{@project_a.id}/assign_team", params: { team_name: @team_b.name }, headers: auth_headers(@admin_token)
     assert_response :ok
     body = JSON.parse(response.body)
     assert_equal @team_b.id, body["team_id"]
     assert_equal "archived", body["status"]
   end
 
+  test "assign_team matches the team name case-insensitively" do
+    post "/projects/#{@project_a.id}/assign_team", params: { team_name: @team_b.name.upcase }, headers: auth_headers(@admin_token)
+    assert_response :ok
+    assert_equal @team_b.id, JSON.parse(response.body)["team_id"]
+  end
+
+  test "assign_team with an unknown team name is 404" do
+    post "/projects/#{@project_a.id}/assign_team", params: { team_name: "Nonexistent" }, headers: auth_headers(@admin_token)
+    assert_response :not_found
+  end
+
   test "member cannot assign or unassign a team" do
-    post "/projects/#{@project_a.id}/assign_team", params: { team_id: @team_b.id }, headers: auth_headers(@member_a_token)
+    post "/projects/#{@project_a.id}/assign_team", params: { team_name: @team_b.name }, headers: auth_headers(@member_a_token)
     assert_response :forbidden
 
     delete "/projects/#{@project_a.id}/unassign_team", headers: auth_headers(@member_a_token)
@@ -137,7 +148,7 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
   private
 
   def login(user)
-    post "/auth/login", params: { username: user.username, password: "password123" }
+    post "/auth/login", params: { login: user.username, password: "password123" }
     JSON.parse(response.body)["access_token"]
   end
 
