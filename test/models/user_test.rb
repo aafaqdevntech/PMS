@@ -101,30 +101,16 @@ class UserTest < ActiveSupport::TestCase
 
   # --- dependent associations ---
 
-  test "deleting a user destroys their profile, employment_detail, comments, and refresh_tokens" do
-    team = Team.create!(name: "Propane")
-    admin = User.create!(username: "admin2", email: "admin2@example.com", password: "password123")
-    EmploymentDetail.create!(user: admin, role: :admin, job_position: "Admin", joined_at: Time.current)
-
+  test "deleting a user destroys their profile, employment_detail, and refresh_tokens" do
     user = User.create!(username: "hank", email: "hank@example.com", password: "password123")
     Profile.create!(user: user, full_name: "Hank Hill")
-    EmploymentDetail.create!(user: user, team: team, role: :member, job_position: "Eng", joined_at: Time.current)
-
-    # The issue is raised by someone else so this test stays isolated from the
-    # separate raised_by-foreign-key gap documented below.
-    project = Project.create!(title: "P", team: team, created_by: admin, status: :active)
-    other_member = User.create!(username: "other_member", email: "other_member@example.com", password: "password123")
-    EmploymentDetail.create!(user: other_member, team: team, role: :member, job_position: "Eng", joined_at: Time.current)
-    issue = Issue.create!(title: "Bug", project: project, raised_by: other_member)
-
-    comment = Comment.create!(commentable: issue, user: user, body: "hi")
+    EmploymentDetail.create!(user: user, role: :member, job_position: "Eng", joined_at: Time.current)
     token = RefreshToken.create!(user: user, jti: SecureRandom.uuid, expires_at: 7.days.from_now)
 
     user.destroy!
 
     assert_nil Profile.find_by(user_id: user.id)
     assert_nil EmploymentDetail.find_by(user_id: user.id)
-    assert_nil Comment.find_by(id: comment.id)
     assert_nil RefreshToken.find_by(id: token.id)
   end
 

@@ -18,8 +18,6 @@ class User < ApplicationRecord
   has_many :raised_issues, class_name: "Issue", foreign_key: :raised_by_id,
                            inverse_of: :raised_by, dependent: :restrict_with_error
 
-  # comments.user_id is NOT NULL, so a deleted user's comments go with them.
-  has_many :comments, dependent: :destroy
   has_many :refresh_tokens, dependent: :destroy
 
   validates :username, presence: true, uniqueness: { case_sensitive: false }

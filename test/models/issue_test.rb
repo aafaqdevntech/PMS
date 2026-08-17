@@ -209,16 +209,14 @@ class IssueTest < ActiveSupport::TestCase
     assert_difference("Issue.count", -1) { @project.destroy! }
   end
 
-  test "destroying an issue nullifies its tasks' issue_id and destroys its comments" do
+  test "destroying an issue nullifies its tasks' issue_id" do
     issue = new_issue
     issue.save!
     task = Task.create!(title: "T", description: "d", project: @project, created_by: @lead, issue: issue)
-    comment = Comment.create!(commentable: issue, user: @member, body: "hi")
 
     issue.destroy!
 
     assert task.reload.persisted?
     assert_nil task.issue_id
-    assert_nil Comment.find_by(id: comment.id)
   end
 end

@@ -4,8 +4,6 @@ class Issue < ApplicationRecord
 
   # Work derived from an issue outlives it.
   has_many :tasks, dependent: :nullify
-  # The conversation about an issue does not.
-  has_many :comments, as: :commentable, dependent: :destroy
 
   enum :status, { open: 0, resolved: 1, rejected: 2 }
 

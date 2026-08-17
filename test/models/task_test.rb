@@ -358,14 +358,4 @@ class TaskTest < ActiveSupport::TestCase
     assert task.reload.persisted?
     assert_nil task.issue_id
   end
-
-  test "destroying a task destroys its comments" do
-    task = new_task
-    task.save!
-    comment = Comment.create!(commentable: task, user: @teammate, body: "hi")
-
-    task.destroy!
-
-    assert_nil Comment.find_by(id: comment.id)
-  end
 end

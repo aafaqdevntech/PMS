@@ -10,20 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_134955) do
-  create_table "comments", force: :cascade do |t|
-    t.text "body", limit: 5000, null: false
-    t.integer "commentable_id", null: false
-    t.string "commentable_type", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
-    t.index ["commentable_type", "commentable_id", "created_at"], name: "index_comments_on_commentable_and_created_at"
-    t.index ["user_id"], name: "index_comments_on_user_id"
-    t.check_constraint "commentable_type IN ('Issue', 'Task')", name: "comments_commentable_type"
-    t.check_constraint "length(body) BETWEEN 1 AND 5000", name: "comments_body_length"
-  end
-
+ActiveRecord::Schema[8.1].define(version: 2026_08_17_060149) do
   create_table "employment_details", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "job_position"
@@ -142,7 +129,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_134955) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
-  add_foreign_key "comments", "users"
   add_foreign_key "employment_details", "teams"
   add_foreign_key "employment_details", "users"
   add_foreign_key "issues", "projects"

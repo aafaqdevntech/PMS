@@ -51,12 +51,11 @@ info:
     - `GET /teams` and `GET /teams/:id` are open to **any authenticated
       user** (not just admins) — a user needs to be able to see their own
       team.
-    - On Issues, Tasks, and Comments an admin is a **reader and a
-      moderator**: they can read every record on every team, and delete any
-      of them, but they never raise an issue, create or work a task, or post
-      a comment. The admin's delete reaches past the issue terminal lock —
-      a `resolved`/`rejected` issue is permanent for the team that raised it,
-      but an admin can still purge it.
+    - On Issues and Tasks an admin is a **reader and a moderator**: they can
+      read every record on every team, and delete any of them, but they
+      never raise an issue or create/work a task. The admin's delete reaches
+      past the issue terminal lock — a `resolved`/`rejected` issue is
+      permanent for the team that raised it, but an admin can still purge it.
     - Authorization failures return `403 Forbidden` with
       `{"error": "You are not authorized to perform this action"}`.
   version: "1.0.0"
@@ -84,8 +83,6 @@ tags:
     description: Issues raised by team members against their team's projects (admin reads and deletes, but never raises or closes)
   - name: Tasks
     description: Work items on a team's projects, managed by the team lead and worked by one assignee (admin reads and deletes, but takes no part in the workflow)
-  - name: Comments
-    description: The team's conversation on an issue or a task (admin reads and deletes, but never posts)
 
 security:
   - bearerAuth: []
@@ -1500,8 +1497,8 @@ paths:
         removed: it is permanent for the team that raised it, but not for an
         admin moderating it away.
 
-        Deleting an issue also deletes its comments. Any tasks promoted from
-        it survive, with their `issue_id` set to `null`.
+        Any tasks promoted from it survive, with their `issue_id` set to
+        `null`.
       responses:
         '204':
           description: Deleted, no content
@@ -1782,7 +1779,7 @@ paths:
       summary: Delete a task
       description: |
         The project team's designated lead, or an **admin** (on any team),
-        at any status. Deleting a task also deletes its comments.
+        at any status.
       responses:
         '204':
           description: Task deleted
@@ -1925,230 +1922,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
-
-  /issues/{issue_id}/comments:
-    parameters:
-      - name: issue_id
-        in: path
-        required: true
-        description: Issue ID
-        schema:
-          type: integer
-    get:
-      tags: [Comments]
-      summary: List an issue's comments
-      description: |
-        Admin, or any member of the issue's project's team. A member of any
-        other team gets `403`, as does a user with no team at all.
-
-        Returned oldest-first by `created_at`. No pagination. Readable at any
-        issue status — a `resolved`/`rejected` issue keeps its conversation
-        as history.
-      responses:
-        '200':
-          description: Array of comments
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Comment'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    post:
-      tags: [Comments]
-      summary: Comment on an issue
-      description: |
-        Any member of the issue's project's team, the team lead included.
-        Other teams, users with no team, and **admins** get `403`.
-
-        `user_id` is always the authenticated user and is never accepted as
-        input. The parent is always taken from the path — `commentable_type`
-        and `commentable_id` in the body are ignored.
-
-        The team is derived through Issue → Project → Team and is never
-        supplied by the client. Commenting is allowed at any issue status,
-        including after the issue is closed.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CommentRequest'
-            example:
-              body: Reproduced on Safari 17 — it's the flex basis, not the media query.
-      responses:
-        '201':
-          description: Comment created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Comment'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
-  /tasks/{task_id}/comments:
-    parameters:
-      - name: task_id
-        in: path
-        required: true
-        description: Task ID
-        schema:
-          type: integer
-    get:
-      tags: [Comments]
-      summary: List a task's comments
-      description: |
-        Admin, or any member of the task's project's team. A member of any
-        other team gets `403`, as does a user with no team at all.
-
-        Returned oldest-first by `created_at`. No pagination. Readable at any
-        task status.
-      responses:
-        '200':
-          description: Array of comments
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Comment'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    post:
-      tags: [Comments]
-      summary: Comment on a task
-      description: |
-        Any member of the task's project's team — the lead, the assignee and
-        every other member alike. Other teams, users with no team, and
-        **admins** get `403`.
-
-        `user_id` is always the authenticated user and is never accepted as
-        input. The parent is always taken from the path — `commentable_type`
-        and `commentable_id` in the body are ignored.
-
-        The team is derived through Task → Project → Team and is never
-        supplied by the client. Commenting is allowed at any task status.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CommentRequest'
-            example:
-              body: Picking this up now — should be ready for review tomorrow.
-      responses:
-        '201':
-          description: Comment created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Comment'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
-  /comments/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        description: Comment ID
-        schema:
-          type: integer
-    patch:
-      tags: [Comments]
-      summary: Edit a comment
-      description: |
-        The **author only** — a teammate, the team lead, and an admin all get
-        `403`. Only `body` can be changed; a comment can never be moved to
-        another parent or reassigned to another user, so `user_id`,
-        `commentable_type` and `commentable_id` in the body are ignored.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CommentRequest'
-            example:
-              body: Correction — it reproduces below 900px, not 1200px.
-      responses:
-        '200':
-          description: Comment updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Comment'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-    put:
-      tags: [Comments]
-      summary: Edit a comment (alias of PATCH)
-      description: Identical to `PATCH /comments/{id}`.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CommentRequest'
-      responses:
-        '200':
-          description: Comment updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Comment'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-    delete:
-      tags: [Comments]
-      summary: Delete a comment
-      description: |
-        The **author**, or an **admin** (any comment, on any team). A
-        teammate and the team lead both get `403` on someone else's comment.
-
-        Comments are also deleted automatically when their issue or task is
-        deleted, or when their author's user account is deleted.
-      responses:
-        '204':
-          description: Deleted, no content
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
 components:
   securitySchemes:
@@ -2857,41 +2630,3 @@ components:
             Required — must be a legal move for the caller from the task's current status
             (see the transition table on PATCH /tasks/{id}/status).
       required: [status]
-
-    Comment:
-      type: object
-      properties:
-        id:
-          type: integer
-        user_id:
-          type: integer
-          description: The author. Always the authenticated user at creation, never editable.
-        commentable_type:
-          type: string
-          enum: [Issue, Task]
-          description: Which kind of record the comment hangs off. Set from the request path, never editable.
-        commentable_id:
-          type: integer
-          description: The Issue or Task the comment belongs to. Set from the request path, never editable.
-        body:
-          type: string
-          maxLength: 5000
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required: [id, user_id, commentable_type, commentable_id, body, created_at, updated_at]
-
-    CommentRequest:
-      type: object
-      description: >-
-        Used for both create and update. user_id, commentable_type and commentable_id are not
-        accepted — the author is the authenticated user and the parent comes from the path.
-      properties:
-        body:
-          type: string
-          maxLength: 5000
-          description: Required — 1 to 5000 characters. Blank or over-long returns 422.
-      required: [body]

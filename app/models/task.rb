@@ -25,8 +25,6 @@ class Task < ApplicationRecord
   belongs_to :created_by, class_name: "User"
   belongs_to :assigned_to, class_name: "User", optional: true
 
-  has_many :comments, as: :commentable, dependent: :destroy
-
   # validate: true keeps an unknown value (or a blank one) out of the raw
   # ArgumentError path, so bad input is a 422 like every other bad field.
   enum :priority, { critical: 0, high: 1, medium: 2, normal: 3 }, validate: true
