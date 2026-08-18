@@ -10,7 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_060149) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_090000) do
+  create_table "comments", force: :cascade do |t|
+    t.text "body", limit: 5000, null: false
+    t.integer "commentable_id", null: false
+    t.string "commentable_type", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["commentable_type", "commentable_id", "created_at"], name: "index_comments_on_commentable_and_created_at"
+    t.index ["user_id"], name: "index_comments_on_user_id"
+    t.check_constraint "commentable_type IN ('Issue', 'Task')", name: "comments_commentable_type"
+    t.check_constraint "length(body) BETWEEN 1 AND 5000", name: "comments_body_length"
+  end
+
   create_table "employment_details", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "job_position"
@@ -38,6 +51,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_060149) do
     t.check_constraint "description IS NULL OR length(description) <= 5000", name: "issues_description_length"
     t.check_constraint "length(title) BETWEEN 1 AND 255", name: "issues_title_length"
     t.check_constraint "resolution_note IS NULL OR length(resolution_note) <= 5000", name: "issues_resolution_note_length"
+  end
+
+  create_table "notifications", force: :cascade do |t|
+    t.integer "actor_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "event_type", null: false
+    t.integer "issue_id", null: false
+    t.datetime "read_at"
+    t.integer "recipient_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_id"], name: "index_notifications_on_actor_id"
+    t.index ["issue_id"], name: "index_notifications_on_issue_id"
+    t.index ["recipient_id", "created_at"], name: "index_notifications_on_recipient_id_and_created_at"
+    t.index ["recipient_id", "read_at"], name: "index_notifications_on_recipient_id_and_read_at"
+    t.index ["recipient_id"], name: "index_notifications_on_recipient_id"
+    t.check_constraint "event_type BETWEEN 0 AND 2", name: "notifications_event_type_range"
   end
 
   create_table "profiles", force: :cascade do |t|
@@ -129,10 +158,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_060149) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  add_foreign_key "comments", "users"
   add_foreign_key "employment_details", "teams"
   add_foreign_key "employment_details", "users"
   add_foreign_key "issues", "projects"
   add_foreign_key "issues", "users", column: "raised_by_id"
+  add_foreign_key "notifications", "issues"
+  add_foreign_key "notifications", "users", column: "actor_id"
+  add_foreign_key "notifications", "users", column: "recipient_id"
   add_foreign_key "profiles", "users"
   add_foreign_key "projects", "teams"
   add_foreign_key "projects", "users", column: "created_by_id"

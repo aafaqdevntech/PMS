@@ -8,12 +8,14 @@ class DashboardCounts
   end
 
   def to_h
+    extra = { unread_notifications: user.received_notifications.unread.count }
+
     if user.admin?
-      { role: "admin", counts: admin_counts }
+      { role: "admin", counts: admin_counts.merge(extra) }
     elsif (team = user.led_team)
-      { role: "team_lead", counts: team_lead_counts(team) }
+      { role: "team_lead", counts: team_lead_counts(team).merge(extra) }
     else
-      { role: "member", counts: member_counts }
+      { role: "member", counts: member_counts.merge(extra) }
     end
   end
 

@@ -20,6 +20,16 @@ class User < ApplicationRecord
 
   has_many :refresh_tokens, dependent: :destroy
 
+  # A user's own inbox dies with them, same as profile/employment_detail.
+  has_many :received_notifications, class_name: "Notification", foreign_key: :recipient_id,
+                                    inverse_of: :recipient, dependent: :destroy
+
+  # Mirrors created_tasks/raised_issues above: a user who is still the
+  # recorded actor on someone else's notification (e.g. the lead who
+  # resolved an issue) can't be deleted out from under it.
+  has_many :sent_notifications, class_name: "Notification", foreign_key: :actor_id,
+                                inverse_of: :actor, dependent: :restrict_with_error
+
   validates :username, presence: true, uniqueness: { case_sensitive: false }
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                      format: { with: URI::MailTo::EMAIL_REGEXP }

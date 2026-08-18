@@ -3,6 +3,8 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
+  mount ActionCable.server => "/cable"
+
   post "/auth/login", to: "auth#login"
   post "/auth/refresh", to: "auth#refresh"
   post "/auth/logout", to: "auth#logout"
@@ -43,6 +45,15 @@ Rails.application.routes.draw do
     member do
       post :resolve
       post :reject
+    end
+  end
+
+  resources :notifications, only: [:index] do
+    member do
+      patch :read
+    end
+    collection do
+      patch :read_all
     end
   end
 

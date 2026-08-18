@@ -52,6 +52,18 @@ class IssuesControllerTest < ActionDispatch::IntegrationTest
     assert_nil body["resolution_note"]
   end
 
+  test "raising an issue notifies the rest of the team, not the raiser" do
+    perform_enqueued_jobs do
+      post "/projects/#{@project.id}/issues", params: { title: "New bug" }, headers: auth_headers(@owner_token)
+    end
+    assert_response :created
+    new_issue_id = JSON.parse(response.body)["id"]
+
+    recipients = Notification.where(issue_id: new_issue_id, event_type: "issue_raised").pluck(:recipient_id)
+    assert_equal [@lead.id, @teammate.id, @fake_lead.id].sort, recipients.sort
+    assert_not_includes recipients, @owner.id
+  end
+
   test "team lead can also raise an issue" do
     post "/projects/#{@project.id}/issues", params: { title: "Lead bug" }, headers: auth_headers(@lead_token)
     assert_response :created
@@ -226,6 +238,17 @@ class IssuesControllerTest < ActionDispatch::IntegrationTest
     post "/issues/#{@issue.id}/reject", params: { resolution_note: "Not a bug" }, headers: auth_headers(@lead_token)
     assert_response :ok
     assert_equal "rejected", JSON.parse(response.body)["status"]
+  end
+
+  test "resolving an issue notifies the rest of the team, not the lead who acted" do
+    perform_enqueued_jobs do
+      post "/issues/#{@issue.id}/resolve", params: { resolution_note: "Fixed" }, headers: auth_headers(@lead_token)
+    end
+    assert_response :ok
+
+    recipients = Notification.where(issue: @issue, event_type: "issue_resolved").pluck(:recipient_id)
+    assert_equal [@owner.id, @teammate.id, @fake_lead.id].sort, recipients.sort
+    assert_not_includes recipients, @lead.id
   end
 
   test "resolving without a resolution note is rejected" do

@@ -24,6 +24,7 @@ class IssuesController < ApplicationController
     issue.raised_by = current_user
     authorize issue
     issue.save!
+    IssueNotificationJob.perform_later(issue_id: issue.id, actor_id: current_user.id, event_type: "issue_raised")
     render json: issue, status: :created
   end
 
@@ -66,6 +67,7 @@ class IssuesController < ApplicationController
 
   def close_issue(status)
     @issue.update!(status: status, resolution_note: note_params[:resolution_note])
+    IssueNotificationJob.perform_later(issue_id: @issue.id, actor_id: current_user.id, event_type: "issue_#{status}")
     render json: @issue
   end
 

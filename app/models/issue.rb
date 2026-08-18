@@ -5,6 +5,11 @@ class Issue < ApplicationRecord
   # Work derived from an issue outlives it.
   has_many :tasks, dependent: :nullify
 
+  # Unlike tasks, a notification is meaningless without the issue it's
+  # about. In practice this only ever fires for an admin's moderation
+  # delete of a closed issue, since destroy is otherwise tightly guarded.
+  has_many :notifications, dependent: :destroy
+
   enum :status, { open: 0, resolved: 1, rejected: 2 }
 
   # Lengths mirror the check constraints on the table, so over-long input is

@@ -84,4 +84,11 @@ Rails.application.configure do
   #
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+
+  # ActionCable's own origin check is separate from the Rack::Cors config in
+  # config/initializers/cors.rb and defaults to rejecting cross-origin
+  # connections in production. This API already runs fully open CORS
+  # (origins "*") — match that posture here rather than introducing a
+  # second, inconsistent allowlist.
+  config.action_cable.disable_request_forgery_protection = true
 end

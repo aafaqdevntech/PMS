@@ -13,7 +13,7 @@ class ApplicationController < ActionController::API
   def authenticate_user!
     render json: { error: "Please log in" }, status: :unauthorized unless current_user
   end
-
+  # ||= assign @current_user only if it's not already set, so we don't hit the database multiple times per request.
   def current_user
     @current_user ||= User.find_by(id: decoded_access_token && decoded_access_token["user_id"])
   end

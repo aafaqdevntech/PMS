@@ -273,7 +273,8 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "member", body["role"]
     assert_equal({ "projects" => Project.where(team_id: @team.id).count, "my_tasks" => 0, "issues" => 0,
                    "due_today_tasks" => 0,
-                   "teams_members" => EmploymentDetail.where(team_id: @team.id).count }, body["counts"])
+                   "teams_members" => EmploymentDetail.where(team_id: @team.id).count,
+                   "unread_notifications" => 0 }, body["counts"])
   end
 
   test "member sees their own assigned tasks, raised issues, tasks due today, projects, and team headcount" do
@@ -312,7 +313,8 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
     body = JSON.parse(response.body)
     assert_equal "member", body["role"]
-    assert_equal({ "projects" => 0, "my_tasks" => 0, "issues" => 0, "due_today_tasks" => 0, "teams_members" => 0 },
+    assert_equal({ "projects" => 0, "my_tasks" => 0, "issues" => 0, "due_today_tasks" => 0, "teams_members" => 0,
+                   "unread_notifications" => 0 },
                  body["counts"])
   end
 
